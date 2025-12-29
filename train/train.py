@@ -11,14 +11,14 @@ from data.dataset import DataSet
 def train(model):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
-    data_train = DataSet.fromH5('QCD_HT50toInf')
-
+    data_train = DataSet.fromH5('dataset/QCD')
+    data_train.normalise()
     # Get input shape
     input_shape = len(data_train.data_frame.columns)
 
     model.build_model(input_shape)
     model.compile_model()
-    model.fit(data_train)
+    model.fit(data_train.data_frame)
     model.save()
 
     return
@@ -37,5 +37,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    model = fromYaml(args.yaml_config, args.output)
-    train(model, args.output)
+    model = fromYaml(args.yaml_config,args.output)
+    train(model)
+    
+    model.plot_loss()

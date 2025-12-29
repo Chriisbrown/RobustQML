@@ -12,3 +12,9 @@ training_config :
   batch_size : 1024
   learning_rate : 0.001
   validation_split : 0.1
+
+  EarlyStopping_patience : 10
+
+  ReduceLROnPlateau_factor : 0.5
+  ReduceLROnPlateau_patience : 5
+  ReduceLROnPlateau_min_lr : 0.00001

@@ -7,7 +7,7 @@ Written 23/12/2025 cebrown@cern.ch
 import os
 import shutil
 import yaml
-from tagger.model.ADModel import ADModelFactory, ADModel
+from model.AnomalyDetectionModel import ADModelFactory, ADModel
 
 
 def fromYaml(yaml_path: str, folder: str, recreate: bool = True) -> ADModel:
@@ -27,7 +27,7 @@ def fromYaml(yaml_path: str, folder: str, recreate: bool = True) -> ADModel:
 
     # Create a model based on what is specified in the yaml 'model' field
     # Model must be registered for this to function
-    model = ADModelFactory.create_JetTagModel(yaml_dict['model'], folder)
+    model = ADModelFactory.create_ADModel(yaml_dict['model'], folder)
     # Validate yaml dict before loading
     model.load_yaml(yaml_path)
     if recreate:

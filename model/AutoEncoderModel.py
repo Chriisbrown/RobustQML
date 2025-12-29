@@ -10,10 +10,13 @@ import numpy as np
 import numpy.typing as npt
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 import keras
 from keras.models import load_model
 from keras.layers import Dense
+
+import tensorflow as tf
 
 from sklearn.metrics import mean_absolute_error
 # Register the model in the factory with the string name corresponding to what is in the yaml config
@@ -26,14 +29,14 @@ class AutoEncoderModel(ADModel):
         AutoEncoderModel (_type_): Base class of a AutoEncoderModel
     """
 
-    def build_model(self, inputs_shape: tuple, outputs_shape: tuple):
+    def build_model(self, inputs_shape: tuple):
         """build model override, makes the model layer by layer
 
         Args:
             inputs_shape (tuple): Shape of the input
         """
         
-        inputs = keras.layers.Input(shape=inputs_shape, name='model_input')
+        inputs = keras.layers.Input(shape=(inputs_shape,), name='model_input')
         encoder = Dense(32,activation='relu')(inputs)
         encoder = Dense(16,activation='relu')(encoder)
         encoder = Dense(8,activation='relu')(encoder)
@@ -51,11 +54,21 @@ class AutoEncoderModel(ADModel):
         Args:
             num_samples (int): Number of samples in the training set used for scheduling
         """
+        self.callbacks = [
+            EarlyStopping(monitor='val_loss', patience=self.training_config['EarlyStopping_patience']),
+            ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=self.training_config['ReduceLROnPlateau_factor'],
+                patience=self.training_config['ReduceLROnPlateau_patience'],
+                min_lr=self.training_config['ReduceLROnPlateau_min_lr'],
+            ),
+        ]
 
         # compile the tensorflow model setting the loss and metrics
         self.AD_model.compile(
             optimizer='adam',
-            loss='mae'
+            loss='mae',
+            metrics= ['mae', 'mean_squared_error'],
         )
 
     def fit(
@@ -71,21 +84,21 @@ class AutoEncoderModel(ADModel):
             sample_weight (npt.NDArray[np.float64]): sample weighting
         """
         # Train the model using hyperparameters in yaml config
-        
-        self.AD_model.fit(train)
+        keras.config.disable_traceback_filtering()
         
         self.history = self.AD_model.fit(
-            {'model_input': train},
-            {'model_output':train},
-            epochs=self.training_config['finetuning_epochs'],
+            train.to_numpy(),
+            train.to_numpy(),
+            epochs=self.training_config['epochs'],
             batch_size=self.training_config['batch_size'],
             verbose=self.run_config['verbose'],
             validation_split=self.training_config['validation_split'],
             shuffle=True,
+            callbacks=self.callbacks,
         )
         
         
-    def predict(self, X_test: npt.NDArray[np.float64]) -> tuple:
+    def predict(self, X_test) -> tuple:
         """Predict method for model
 
         Args:
@@ -94,9 +107,12 @@ class AutoEncoderModel(ADModel):
         Returns:
             tuple: (class_predictions , pt_ratio_predictions)
         """
+        print(X_test.shape)
         model_outputs = self.AD_model.predict(X_test)
-        ad_score = mean_absolute_error(X_test,model_outputs)
-        return ad_score
+        print(model_outputs.shape)
+        #ad_scores = keras.losses.MeanAbsoluteError(model_outputs, X_test)
+        ad_scores = tf.keras.losses.mae(model_outputs, X_test)
+        return ad_scores
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

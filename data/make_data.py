@@ -26,4 +26,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     data_set = DataSet.fromHF(args.input,max_number_of_events=args.num_events)
+    data_set.plot_inputs(args.input)
     data_set.save_h5(args.input)
+    

@@ -71,6 +71,17 @@ class ADModel(ABC):
         Must be written for child class
         """
 
+
+    def plot_loss(self):
+        """Plot the loss of the model to the output directory"""
+        out_dir = self.output_directory
+        # Produce some basic plots with the training for diagnostics
+        plot_path = os.path.join(out_dir, "plots/training")
+        os.makedirs(plot_path, exist_ok=True)
+
+        # Plot history
+        loss_history(plot_path, ['mae'], self.history)
+        
     def predict(self, **kwargs):
         """Predict method for model
 

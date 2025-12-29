@@ -1,0 +1,6 @@
+*.png
+*.pdf
+*.keras
+*/__pycache__/**
+output/**
+dataset/**

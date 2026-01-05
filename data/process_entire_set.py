@@ -12,11 +12,11 @@ from data.dataset import DataSet
 
 SELECTED = {
     # "DY": "DY to ll",
-    # "QCD": "QCD inclusive",
-    # "QCDbb": "QCD bb",
-    # "Minbias": "Minbias / Soft QCD",
+    "QCD": "QCD inclusive",
+    "QCDbb": "QCD bb",
+    "Minbias": "Minbias / Soft QCD",
     # "TTallh" : "tt all-hadr",
-    # "HH4b"  : "HH 4b",
+    "HH4b"  : "HH 4b",
     # "TTsemil" : "tt semi-lept",
     # "TTalll" : "tt all-lept",
     # "ttH" : "ttH incl",
@@ -28,7 +28,7 @@ SELECTED = {
     # "Zqq" : "Z -> qq (uds)",
     # "Zbb" : "Z -> bb",
     # "Zcc" : "Z -> cc",
-    "upsilonl" : "upsilon -> l" ,
+    #"upsilonl" : "upsilon -> l" ,
     "VBFHcc" : "VBFHcc" ,
     "ggHbb" : "ggHbb"
 }

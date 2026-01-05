@@ -14,11 +14,11 @@ def train(model):
     data_train = DataSet.fromH5('dataset/QCD')
     data_train.normalise()
     # Get input shape
-    input_shape = len(data_train.data_frame.columns)
+    input_shape = len(data_train.training_columns)
 
     model.build_model(input_shape)
     model.compile_model()
-    model.fit(data_train.data_frame)
+    model.fit(data_train.get_training_dataset())
     model.save()
 
     return

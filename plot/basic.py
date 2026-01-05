@@ -28,7 +28,6 @@ def plot_2d(variable_one, variable_two, range_one, range_two, name_one, name_two
 def plot_histo(variable, name, title, xlabel, ylabel, log = 'log', x_range=(0, 1), bins = 50):
     plt.clf()
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    hep.cms.label(llabel=style.CMSHEADER_LEFT, rlabel=style.CMSHEADER_RIGHT, ax=ax, fontsize=style.CMSHEADER_SIZE)
     ## If we are histogramming by class and so want class colours
     if len(variable) > len(style.colours):
         colours = style.color_cycle
@@ -36,10 +35,6 @@ def plot_histo(variable, name, title, xlabel, ylabel, log = 'log', x_range=(0, 1
     else:
         colours = style.colours
         linestyle = style.LINESTYLES
-    colour_list = []
-    for i, histo in enumerate(variable):
-        colour_list.append(colours[i])
-
     ax.hist(
             variable,
             bins=bins,
@@ -76,11 +71,11 @@ def error_residual(model_outputs,plot_dir):
     
 def loss_history(plot_dir, loss_names, history):
     for metric in loss_names:
-        metric = metric + '_loss'
+        #metric = metric + '_loss'
 
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-        ax.plot(history.history[metric], label='Train Loss', linewidth=style.LINEWIDTH)
-        ax.plot(history.history['val_' + metric], label='Validation Loss', linewidth=style.LINEWIDTH)
+        ax.plot(history[metric], label='Train Loss', linewidth=style.LINEWIDTH)
+        ax.plot(history['val_' + metric], label='Validation Loss', linewidth=style.LINEWIDTH)
         ax.grid(True)
         # ax.set_ylabel('Loss')
         ax.set_ylabel('Loss ' + metric)
@@ -92,4 +87,41 @@ def loss_history(plot_dir, loss_names, history):
         plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
 
         fig.clf()
+        
+def rates(model,sample_name,plot_dir,rates_outputs):
 
+    hist, bin_edges = np.histogram(rates_outputs, range=(0,1), density=True, bins=100)
+        
+    fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+    ax.plot(np.linspace(0,1,100),1 - (np.cumsum(hist))/100,label=type(model).__name__, linewidth=style.LINEWIDTH)
+    ax.grid(True)
+    ax.set_title(sample_name)
+    ax.set_ylabel('Rate')
+    ax.set_xlabel('Threshold')
+    ax.legend(loc='upper right')
+
+    save_path = os.path.join(plot_dir, "rate")
+    plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
+    
+    return 1 - np.cumsum(hist)/100
+
+def efficiency(model,sample_name,plot_dir,efficiencies_outputs):
+
+    hist, bin_edges = np.histogram(efficiencies_outputs, range=(0,1), density=True, bins=100)
+        
+    fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+    ax.plot(np.linspace(0,1,100),(np.cumsum(hist))/100, label=type(model).__name__, linewidth=style.LINEWIDTH)
+    ax.set_title(sample_name)
+    ax.grid(True)
+    ax.set_ylabel('Efficiency')
+    ax.set_xlabel('Threshold')
+    ax.legend(loc='upper right')
+
+    save_path = os.path.join(plot_dir, sample_name+"_efficiency")
+    plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
+    
+    return 1-np.cumsum(hist)/100
+    
+    

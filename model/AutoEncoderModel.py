@@ -86,7 +86,7 @@ class AutoEncoderModel(ADModel):
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
         
-        self.history = self.AD_model.fit(
+        history = self.AD_model.fit(
             train.to_numpy(),
             train.to_numpy(),
             epochs=self.training_config['epochs'],
@@ -96,6 +96,8 @@ class AutoEncoderModel(ADModel):
             shuffle=True,
             callbacks=self.callbacks,
         )
+        
+        self.history = history.history
         
         
     def predict(self, X_test) -> tuple:
@@ -107,12 +109,10 @@ class AutoEncoderModel(ADModel):
         Returns:
             tuple: (class_predictions , pt_ratio_predictions)
         """
-        print(X_test.shape)
         model_outputs = self.AD_model.predict(X_test)
-        print(model_outputs.shape)
-        #ad_scores = keras.losses.MeanAbsoluteError(model_outputs, X_test)
         ad_scores = tf.keras.losses.mae(model_outputs, X_test)
-        return ad_scores
+        ad_scores = ad_scores._numpy()
+        return ad_scores #/ max(ad_scores)
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

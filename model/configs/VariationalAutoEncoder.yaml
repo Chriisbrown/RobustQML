@@ -1,16 +1,16 @@
-model: AutoEncoderModel
+model: VariationalAutoEncoderModel
 run_config :
   verbose : 2
   debug : True
   num_threads : 64
 
 model_config :
-  name : autoencoder
+  name : variationalautoencoder
 
 training_config :
-  epochs : 100
+  epochs : 50
   batch_size : 256
-  learning_rate : 0.001
+  learning_rate : 0.00001
   validation_split : 0.1
 
   EarlyStopping_patience : 10

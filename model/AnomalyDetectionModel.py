@@ -12,6 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import yaml
 
+from plot.basic import loss_history
+
 class ADModel(ABC):
     """Parent Class for Anomaly Detection Models
 
@@ -80,7 +82,7 @@ class ADModel(ABC):
         os.makedirs(plot_path, exist_ok=True)
 
         # Plot history
-        loss_history(plot_path, ['mae'], self.history)
+        loss_history(plot_path, ['loss'], self.history)
         
     def predict(self, **kwargs):
         """Predict method for model

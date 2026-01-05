@@ -1,0 +1,26 @@
+
+name: robust
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - pandas
+  - pip:
+    - matplotlib
+    - mplhep
+    - scikit-learn
+    - uproot4==4.0.0
+    - xxhash
+    - pyarrow==17.0.0
+    - hist==2.7.3
+    - shap
+    - awkward-pandas
+    - ydf
+    - notebook
+    - schema
+    - tqdm
+    - tensorflow[and-cuda]
+    - pyparsing
+    - datasets

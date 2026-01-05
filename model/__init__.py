@@ -1,1 +1,2 @@
 from model.AutoEncoderModel import AutoEncoderModel
+from model.VariationalAutoEncoderModel import VariationalAutoEncoderModel

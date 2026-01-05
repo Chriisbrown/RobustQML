@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import mplhep as hep
 
-colours = ["black", "red", "orange", "green", "blue"]
+colours = ["black", "red", "orange", "green", "blue","magenta","cyan","yellow","purple","gold"]
 LINESTYLES = [
     "-",
     "--",

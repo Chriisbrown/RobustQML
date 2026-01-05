@@ -59,8 +59,8 @@ Secondly, add your model to the model/__init__.py as from model.MyModel import M
 Finally, add your config yaml to model/configs
 
 The config must follow in style to the others present and contains your model hyperparameters. The hyperparameters are automatically loaded when the model is created either from the original yaml or from a saved model folder. They are accessed in your model class with, for example, self.model_config['name']. The internal hyperparameters in each dictionary are for you to decide and access when building and compiling your model. Below is the minimum requirements for your yaml config:
-
-model: MyModel #! This must be the same as the name you registered you model with in the JetModelFactory.register
+```
+model: MyModel #! This must be the same as the name you registered you model with in the ADModelFactory.register
 run_config :
   verbose : 2
   debug : True
@@ -70,7 +70,8 @@ model_config :
 
 training_config :
   validation_split : 0.1
-
+```
 To train your new model just specify the new yaml when training e.g.
-
+```
 python train/train.py -y model/configs/mymodel.yaml -o output/mymodel
+```

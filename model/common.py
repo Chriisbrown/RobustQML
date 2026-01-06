@@ -10,6 +10,31 @@ import yaml
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
 
 
+def fromDict(config_dict: dict, folder: str, recreate: bool = True) -> ADModel:
+    """Create a model directly from a dictionary 
+
+    Args:
+        config dict (dict): Config dictionary
+        folder (str): Output saving folder for model
+        recreate (bool, optional): Rewrite the output directory?. Defaults to True.
+
+    Returns:
+        ADModel: The model
+    """
+
+    # Create a model based on what is specified in the yaml 'model' field
+    # Model must be registered for this to function
+    model = ADModelFactory.create_ADModel(config_dict['model'], folder, config_dict)
+
+    if recreate:
+        # Remove output dir if exists
+        if os.path.exists(folder):
+            shutil.rmtree(folder)
+            print(f"Re-created existing directory: {folder}.")
+            # Create dir to save results
+        os.makedirs(folder)
+    return model
+
 def fromYaml(yaml_path: str, folder: str, recreate: bool = True) -> ADModel:
     """Create a model directly from a yaml input file
 
@@ -19,7 +44,7 @@ def fromYaml(yaml_path: str, folder: str, recreate: bool = True) -> ADModel:
         recreate (bool, optional): Rewrite the output directory?. Defaults to True.
 
     Returns:
-        JetTagModel: The model
+        ADModel: The model
     """
 
     with open(yaml_path, 'r') as stream:
@@ -27,9 +52,7 @@ def fromYaml(yaml_path: str, folder: str, recreate: bool = True) -> ADModel:
 
     # Create a model based on what is specified in the yaml 'model' field
     # Model must be registered for this to function
-    model = ADModelFactory.create_ADModel(yaml_dict['model'], folder)
-    # Validate yaml dict before loading
-    model.load_yaml(yaml_path)
+    model = ADModelFactory.create_ADModel(yaml_dict['model'], folder, yaml_dict)
     if recreate:
         # Remove output dir if exists
         if os.path.exists(folder):
@@ -49,7 +72,7 @@ def fromFolder(save_path: str, newoutput_dir: str = "None") -> ADModel:
         newoutput_dir (str, optional): New folder to save the model to if needed. Defaults to "None".
 
     Returns:
-        JetTagModel: The model
+        ADModel: The model
     """
     if newoutput_dir != "None":
         folder = newoutput_dir

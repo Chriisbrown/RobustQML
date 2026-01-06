@@ -6,6 +6,9 @@ run_config :
 
 model_config :
   name : autoencoder
+  encoder_layers : [32,16]
+  decoder_layers : [16,32]
+  latent_dim: 8
 
 training_config :
   epochs : 100

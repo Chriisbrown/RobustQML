@@ -12,7 +12,6 @@ style.set_style()
 
 def plot_2d(variable_one, variable_two, range_one, range_two, name_one, name_two, title):
     fig, ax = plt.subplots(1, 1, figsize=(style.FIGURE_SIZE[0] + 2, style.FIGURE_SIZE[1]))
-    hep.cms.label(llabel=style.CMSHEADER_LEFT, rlabel=style.CMSHEADER_RIGHT, ax=ax, fontsize=style.CMSHEADER_SIZE)
 
     hist2d = ax.hist2d(
         variable_one, variable_two, range=(range_one, range_two), bins=50, norm=matplotlib.colors.LogNorm(), cmap='jet'
@@ -88,39 +87,43 @@ def loss_history(plot_dir, loss_names, history):
 
         fig.clf()
         
-def rates(model,sample_name,plot_dir,rates_outputs):
+def rates(model_name,sample_name,rates_outputs,plot_dir=None):
 
     hist, bin_edges = np.histogram(rates_outputs, range=(0,1), density=True, bins=100)
         
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    ax.plot(np.linspace(0,1,100),1 - (np.cumsum(hist))/100,label=type(model).__name__, linewidth=style.LINEWIDTH)
+    ax.plot(np.linspace(0,1,100),1 - (np.cumsum(hist))/100,label=model_name, linewidth=style.LINEWIDTH)
     ax.grid(True)
     ax.set_title(sample_name)
     ax.set_ylabel('Rate')
     ax.set_xlabel('Threshold')
     ax.legend(loc='upper right')
-
-    save_path = os.path.join(plot_dir, "rate")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     
+    if plot_dir != None:
+
+        save_path = os.path.join(plot_dir, "rate")
+        plt.savefig(f"{save_path}.png", bbox_inches='tight')
+        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
+
     return 1 - np.cumsum(hist)/100
 
-def efficiency(model,sample_name,plot_dir,efficiencies_outputs):
+def efficiency(model_name,sample_name,efficiencies_outputs,plot_dir=None):
 
     hist, bin_edges = np.histogram(efficiencies_outputs, range=(0,1), density=True, bins=100)
         
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    ax.plot(np.linspace(0,1,100),(np.cumsum(hist))/100, label=type(model).__name__, linewidth=style.LINEWIDTH)
+    ax.plot(np.linspace(0,1,100),(np.cumsum(hist))/100, label=model_name, linewidth=style.LINEWIDTH)
     ax.set_title(sample_name)
     ax.grid(True)
     ax.set_ylabel('Efficiency')
     ax.set_xlabel('Threshold')
     ax.legend(loc='upper right')
+    
+    if plot_dir != None:
 
-    save_path = os.path.join(plot_dir, sample_name+"_efficiency")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
+        save_path = os.path.join(plot_dir, sample_name+"_efficiency")
+        plt.savefig(f"{save_path}.png", bbox_inches='tight')
+        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     
     return 1-np.cumsum(hist)/100
     

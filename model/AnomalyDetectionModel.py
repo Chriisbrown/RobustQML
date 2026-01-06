@@ -38,20 +38,17 @@ class ADModel(ABC):
         self.callbacks = []
 
         self.history = None
-
-    def load_yaml(self, yaml_path: str):
+        
+    def load_config(self, config_dict: dict):
         """Load config dictionaries
 
         Args:
-            yaml_path (str): Path to yaml file
+            config_dict (dict): The config
         """
 
-        with open(yaml_path, 'r') as stream:
-            yaml_dict = yaml.safe_load(stream)
-
-        self.run_config = yaml_dict['run_config']
-        self.model_config = yaml_dict['model_config']
-        self.training_config = yaml_dict['training_config']
+        self.run_config = config_dict['run_config']
+        self.model_config = config_dict['model_config']
+        self.training_config = config_dict['training_config']
 
     @abstractmethod
     def build_model(self, **kwargs):
@@ -67,7 +64,7 @@ class ADModel(ABC):
         """
 
     @abstractmethod
-    def fit(self, **kwargs):
+    def fit(self, X_train, **kwargs):
         """
         Fit the model to the training data
         Must be written for child class
@@ -84,14 +81,11 @@ class ADModel(ABC):
         # Plot history
         loss_history(plot_path, ['loss'], self.history)
         
-    def predict(self, **kwargs):
-        """Predict method for model
-
-        Args:
-            X_test (npt.NDArray[np.float64]): Input X test
-
-        Returns:
-            tuple: (class_predictions , pt_ratio_predictions)
+    @abstractmethod
+    def predict(self, X_test, **kwargs):
+        """
+        Fit the model to the training data
+        Must be written for child class
         """
 
     def save_decorator(save_func):
@@ -173,10 +167,10 @@ class ADModelFactory:
         return inner_wrapper
 
     @classmethod
-    def create_ADModel(cls, name: str, folder: str, **kwargs) -> 'ADModel':
+    def create_ADModel(cls, name: str, folder: str, config: dict, **kwargs) -> 'ADModel':
         """Factory command to create the Anomaly Detection Model"""
-
         ad_class = cls.registry[name]
         model = ad_class(folder, **kwargs)
+        model.load_config(config)
 
         return model

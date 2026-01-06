@@ -3,7 +3,6 @@
 Written 23/12/2025 cebrown@cern.ch
 """
 
-import json
 import os
 
 import numpy as np
@@ -37,14 +36,20 @@ class AutoEncoderModel(ADModel):
         """
         
         inputs = keras.layers.Input(shape=(inputs_shape,), name='model_input')
-        encoder = Dense(32,activation='relu')(inputs)
-        encoder = Dense(16,activation='relu')(encoder)
-        encoder = Dense(8,activation='relu')(encoder)
+        for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
+            if ienc == 0:
+                encoder = Dense(depthenc, activation='relu')(inputs)
+            else:
+                encoder = Dense(depthenc, activation='relu')(encoder)
+
+        encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
+                
+        for idec, depthdec in enumerate(self.model_config['decoder_layers']):
+            if idec == 0:
+                decoder = Dense(depthdec, activation='relu')(encoder)
+            else:
+                decoder = Dense(depthdec, activation='relu')(decoder)
         
-        self.encoder = keras.Model(inputs=inputs, outputs=encoder)
-        
-        decoder = Dense(16,activation='relu')(encoder)
-        decoder = Dense(32,activation='relu')(decoder)
         decoder = Dense(inputs_shape,activation='sigmoid',name='model_output')(decoder)
                 
         self.AD_model = keras.Model(inputs=inputs, outputs=decoder)
@@ -52,7 +57,6 @@ class AutoEncoderModel(ADModel):
     def compile_model(self):
         """compile the model generating callbacks and loss function
         Args:
-            num_samples (int): Number of samples in the training set used for scheduling
         """
         self.callbacks = [
             EarlyStopping(monitor='val_loss', patience=self.training_config['EarlyStopping_patience']),
@@ -79,9 +83,6 @@ class AutoEncoderModel(ADModel):
 
         Args:
             X_train (npt.NDArray[np.float64]): X train dataset
-            y_train (npt.NDArray[np.float64]): y train classification targets
-            pt_target_train (npt.NDArray[np.float64]): y train pt regression targets
-            sample_weight (npt.NDArray[np.float64]): sample weighting
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
@@ -100,19 +101,19 @@ class AutoEncoderModel(ADModel):
         self.history = history.history
         
         
-    def predict(self, X_test) -> tuple:
+    def predict(self, X_test) -> float:
         """Predict method for model
 
         Args:
             X_test (npt.NDArray[np.float64]): Input X test
 
         Returns:
-            tuple: (class_predictions , pt_ratio_predictions)
+            float: model prediction
         """
         model_outputs = self.AD_model.predict(X_test)
         ad_scores = tf.keras.losses.mae(model_outputs, X_test)
         ad_scores = ad_scores._numpy()
-        return ad_scores #/ max(ad_scores)
+        return ad_scores
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

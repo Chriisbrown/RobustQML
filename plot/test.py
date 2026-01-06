@@ -29,7 +29,7 @@ if __name__ == "__main__":
     minbias.normalise()
     minbias_outputs = model.predict(minbias.get_training_dataset())
         
-    minbias_rates = rates(model,minbias,plot_dir,minbias_outputs)
+    minbias_rates = rates(type(model).__name__,'minbias',minbias_outputs,plot_dir)
     
     output_dict = {"Minbias" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}}
     
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         data_test = DataSet.fromH5('dataset/'+datasets)
         data_test.normalise()
         model_outputs = model.predict(data_test.get_training_dataset())
-        efficiency_out = efficiency(model,datasets,plot_dir,model_outputs)
+        efficiency_out = efficiency(type(model).__name__,datasets,model_outputs,plot_dir)
         output_dict[datasets] = {'predictions' : model_outputs,'efficiencies' : efficiency_out}
         
     plot_histo([output_dict[dataset]['predictions'] for dataset in output_dict.keys()], 

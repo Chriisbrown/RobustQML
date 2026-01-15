@@ -12,7 +12,8 @@ import numpy as np
 import numpy.typing as npt
 import yaml
 
-from plot.basic import loss_history
+from plot.basic import loss_history,clusters
+from sklearn.metrics import pairwise_distances
 
 class ADModel(ABC):
     """Parent Class for Anomaly Detection Models
@@ -81,6 +82,10 @@ class ADModel(ABC):
         # Plot history
         loss_history(plot_path, ['loss'], self.history)
         
+    def distance(self, test):
+        x_hat = self.predict(test, return_score=False)
+        return pairwise_distances(test,x_hat)
+
     @abstractmethod
     def predict(self, X_test, **kwargs):
         """

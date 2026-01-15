@@ -1,0 +1,20 @@
+model: AXOVAE
+run_config :
+  verbose : 2
+  debug : True
+  num_threads : 64
+
+model_config :
+  name : axovae
+
+training_config :
+  epochs : 50
+  batch_size : 256
+  learning_rate : 0.00001
+  validation_split : 0.1
+
+  EarlyStopping_patience : 10
+
+  ReduceLROnPlateau_factor : 0.5
+  ReduceLROnPlateau_patience : 5
+  ReduceLROnPlateau_min_lr : 0.00001

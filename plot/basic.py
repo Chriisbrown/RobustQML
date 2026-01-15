@@ -5,6 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
+import umap
 
 from plot import style
 
@@ -126,5 +127,25 @@ def efficiency(model_name,sample_name,efficiencies_outputs,plot_dir=None):
         plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     
     return 1-np.cumsum(hist)/100
+
+def clusters(distances,labels,plot_dir=None,label_to_names={}):
+    fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+    manifold = umap.UMAP(n_components=2, n_neighbors=10, metric="precomputed").fit_transform(distances)
+    ax.scatter(x=manifold[:, 0],
+               y=manifold[:, 1],
+               color=[style.colours[labels[:manifold.shape[0]][i]] for i in range(manifold.shape[0])]) 
+    
+    for label in label_to_names.keys():
+        ax.scatter(x=-999,y=-999,color=style.colours[label],label=label_to_names[label],alpha=1)
+    
+    ax.set_xlim(min(manifold[:, 0]),max(manifold[:, 0]))
+    ax.set_ylim(min(manifold[:, 1]),max(manifold[:, 1]))
+    
+    plt.title("UMAP Projection")
+    plt.legend()
+    save_path = os.path.join(plot_dir, "clusters")
+    plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
+    
     
     

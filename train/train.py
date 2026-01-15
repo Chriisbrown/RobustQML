@@ -18,8 +18,9 @@ def train(model):
 
     model.build_model(input_shape)
     model.compile_model()
-    model.fit(data_train.get_training_dataset())
+    model.fit(data_train)
     model.save()
+    model.plot_loss()
 
     return
 
@@ -39,5 +40,3 @@ if __name__ == "__main__":
 
     model = fromYaml(args.yaml_config,args.output)
     train(model)
-    
-    model.plot_loss()

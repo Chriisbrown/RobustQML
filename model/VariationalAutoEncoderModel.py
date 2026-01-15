@@ -9,8 +9,12 @@ import time
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
+
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
+from data.dataset import DataSet
+
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 import keras
@@ -178,7 +182,7 @@ class VariationalAutoEncoderModel(ADModel):
 
     def fit(
         self,
-        train: npt.NDArray[np.float64],
+        X_train: DataSet,
     ):
         """Fit the model to the training dataset
 
@@ -190,6 +194,7 @@ class VariationalAutoEncoderModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
+        train = X_train.get_training_dataset()
         
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
@@ -239,8 +244,14 @@ class VariationalAutoEncoderModel(ADModel):
             callbacks.on_epoch_end(epoch, logs=logs)
         callbacks.on_train_end(logs=logs) 
 
-                
-    def predict(self, X_test) -> tuple:
+    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+        
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
         """Predict method for model
 
         Args:
@@ -250,20 +261,17 @@ class VariationalAutoEncoderModel(ADModel):
             tuple: (class_predictions , pt_ratio_predictions)
         """
         
-        x = tf.cast(X_test, tf.float32)
+        x = tf.cast(test, tf.float32)
         mean, logvar = self.AD_model.encode(x)
-        print('mean:' , mean)
-        print('logvar:',logvar)
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.AD_model.reparameterize(mean, logvar)
-        print('z:',z)
         x_logit = self.AD_model.decode(z)
-        print('x:',X_test)
-        print('x predict:',x_logit)
         ad_scores = tf.keras.losses.mae(x_logit, x)
-        print('ad score:',ad_scores)
         ad_scores = ad_scores._numpy()
-        return ad_scores
+        if return_score:
+            return ad_scores
+        else:
+            return x_logit
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

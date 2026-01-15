@@ -9,6 +9,9 @@ import numpy as np
 import numpy.typing as npt
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
+from data.dataset import DataSet
+import pandas as pd
+
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 import keras
@@ -77,7 +80,7 @@ class AutoEncoderModel(ADModel):
 
     def fit(
         self,
-        train: npt.NDArray[np.float64],
+        X_train: DataSet,
     ):
         """Fit the model to the training dataset
 
@@ -86,7 +89,7 @@ class AutoEncoderModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        
+        train = X_train.get_training_dataset()
         history = self.AD_model.fit(
             train.to_numpy(),
             train.to_numpy(),
@@ -100,8 +103,14 @@ class AutoEncoderModel(ADModel):
         
         self.history = history.history
         
+    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
         
-    def predict(self, X_test) -> float:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
         """Predict method for model
 
         Args:
@@ -110,10 +119,13 @@ class AutoEncoderModel(ADModel):
         Returns:
             float: model prediction
         """
-        model_outputs = self.AD_model.predict(X_test)
-        ad_scores = tf.keras.losses.mae(model_outputs, X_test)
+        model_outputs = self.AD_model.predict(test)
+        ad_scores = tf.keras.losses.mae(model_outputs, test)
         ad_scores = ad_scores._numpy()
-        return ad_scores
+        if return_score:
+            return ad_scores
+        else:
+            return model_outputs
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

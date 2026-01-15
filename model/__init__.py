@@ -1,2 +1,4 @@
 from model.AutoEncoderModel import AutoEncoderModel
 from model.VariationalAutoEncoderModel import VariationalAutoEncoderModel
+from model.IsolationTreeModel import IsolationTreeModel
+from model.AXOVAE import AXOVAE

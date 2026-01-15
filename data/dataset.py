@@ -82,11 +82,16 @@ class DataSet:
         self.all_features = self.met_feature_list + self.gen_feature_list+ self.multiplicity_feature_list + top_x_jets + top_x_objects
         
         self.training_columns =  top_x_jets + top_x_objects + self.met_feature_list
-
+        
         self.random_state = 4
         self.verbose = 1
         
         self.config_dict = {'name':self.name}
+        
+    def __add__(self, others : list ):
+        frames = [other.data_frame for other in others]
+        frames.append(self.data_frame)
+        self.data_frame = pd.concat(frames)
         
         if orig is not None:
             self.copy_constructor(orig)
@@ -281,3 +286,6 @@ class DataSet:
             for column in self.training_columns:
                 self.data_frame[column]=(self.data_frame[column]-self.data_frame[column].mean())/self.data_frame[column].std()
         self.data_frame = self.data_frame.fillna(0)
+        
+    def set_label(self, label):
+        self.data_frame['event_label'] = (np.ones(len(self.data_frame)) * label).astype(int)

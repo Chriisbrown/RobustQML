@@ -65,9 +65,9 @@ class DataSet:
         
         self.data_frame = pd.DataFrame
         
-        self.max_number_of_jets = 5
-        self.max_number_of_objects = 4
-        self.max_number_of_constituents = 20
+        self.max_number_of_candidates = 20
+        
+        self.puppi_feature_list = ['L1T_PUPPIPart_PT','L1T_PUPPIPart_Eta','L1T_PUPPIPart_Phi']
         
         self.jet_feature_list = ['L1T_JetPuppiAK4_PT','L1T_JetPuppiAK4_Eta','L1T_JetPuppiAK4_Phi']
         self.object_feature_list = ['L1T_MuonTight_PT','L1T_MuonTight_Eta','L1T_MuonTight_Phi',
@@ -289,3 +289,4 @@ class DataSet:
         
     def set_label(self, label):
         self.data_frame['event_label'] = (np.ones(len(self.data_frame)) * label).astype(int)
+        

@@ -25,68 +25,103 @@ import tensorflow as tf
 
 from sklearn.metrics import mean_absolute_error
 
-keras.saving.get_custom_objects().clear()
+#keras.saving.get_custom_objects().clear()
 
 @keras.saving.register_keras_serializable(package="VAE")
 class VAE(keras.Model):
-  """variational autoencoder adapted from:
-     https://www.tensorflow.org/tutorials/generative/cvae
-  """
+    def __init__(self, input_dim, latent_dim,**kwargs):
+        """variational autoencoder adapted from:
+            https://www.tensorflow.org/tutorials/generative/cvae
+        """
+        super().__init__(**kwargs)
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+        self.encoder = keras.Sequential(
+            [
+                keras.layers.InputLayer(shape=(input_dim,), name='model_input'),
+                Dense(32,activation='relu'),
+                Dense(16,activation='relu'),
+                Dense(8,activation='relu'),
+                Dense(latent_dim + latent_dim),
+            ]
+        )
 
-  def __init__(self, latent_dim, input_shape):
-    super(VAE, self).__init__()
-    self.latent_dim = latent_dim
-    self.input_shape = input_shape
-    self.encoder = keras.Sequential(
-        [
-            keras.layers.InputLayer(shape=(input_shape,), name='model_input'),
-            Dense(32,activation='relu'),
-            Dense(16,activation='relu'),
-            Dense(8,activation='relu'),
-            Dense(latent_dim + latent_dim),
-        ]
-    )
+        self.decoder = keras.Sequential(
+            [
+                keras.layers.InputLayer(input_shape=(latent_dim,)),
+                Dense(8,activation='relu'),
+                Dense(16,activation='relu'),
+                Dense(32,activation='relu'),
+                Dense(input_dim,activation='linear',name='model_output')
+            ]
+        )
 
-    self.decoder = keras.Sequential(
-        [
-            keras.layers.InputLayer(input_shape=(latent_dim,)),
-            Dense(8,activation='relu'),
-            Dense(16,activation='relu'),
-            Dense(32,activation='relu'),
-            Dense(input_shape,activation='linear',name='model_output')
-        ]
-    )
-
-  @tf.function
-  def sample(self, eps=None):
-    if eps is None:
-      eps = tf.random.normal(shape=(100, self.latent_dim))
-    return self.decode(eps, apply_sigmoid=True)
-
-  def encode(self, x):
-    mean, logvar = tf.split(self.encoder(x), num_or_size_splits=2, axis=1)
-    return mean, logvar
-
-  def reparameterize(self, mean, logvar):
-    eps = tf.random.normal(shape=mean.shape)
-    return eps * tf.exp(logvar * .5) + mean
-
-  def decode(self, z, apply_sigmoid=False):
-    logits = self.decoder(z)
-    if apply_sigmoid:
-      probs = tf.sigmoid(logits)
-      return probs
-    return logits
+    @tf.function
+    def sample(self, eps=None):
+        if eps is None:
+            eps = tf.random.normal(shape=(100, self.latent_dim))
+        return self.decode(eps, apply_sigmoid=True)
     
-  def get_config(self):
+    def compute_loss(self, x):
+        #print("======")
+        x = tf.cast(x, tf.float32)
+        #print(tf.math.reduce_max(x))
+        #print(tf.math.reduce_min(x))
+        mean, logvar = self.encode(x)
+        #print('mean:' , mean)
+        #print('logvar:',logvar)
+        z = self.reparameterize(mean, logvar)
+        #print('z:',z)
+        x_logit = self.decode(z)
+        #print('x_logit:',x_logit)
+        cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)
+        #print('cross_ent:',cross_ent)
+        logpx_z = -tf.reduce_sum(cross_ent,axis=1)
+        logpz = log_normal_pdf(z, 0., 0.)
+        logqz_x = log_normal_pdf(z, mean, logvar)
+        #print('logpx_z:',logpx_z)
+        #print('logpz:',logpz)
+        #print('logqz_x:',logqz_x)
+        #print('reduced mean:',tf.reduce_mean(logpx_z + logpz - logqz_x))
+        #print('mse:',tf.reduce_mean(tf.keras.losses.mse(x_logit, x)))
+        return tf.reduce_mean(tf.keras.losses.mse(x_logit, x))-0.001*tf.reduce_mean(logpx_z + logpz - logqz_x)
+        
+    
+    @tf.function
+    def train_step(self, x):
+        """Executes one training step and returns the loss.
+
+        This function computes the loss and gradients, and uses the latter to
+        update the model's parameters.
+        """
+        with tf.GradientTape() as tape:
+            loss = self.compute_loss(x)
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        return loss
+
+    def encode(self, x):
+        mean, logvar = tf.split(self.encoder(x), num_or_size_splits=2, axis=1)
+        return mean, logvar
+
+    def reparameterize(self, mean, logvar):
+        eps = tf.random.normal(shape=mean.shape)
+        return eps * tf.exp(logvar * .5) + mean
+
+    def decode(self, z, apply_sigmoid=False):
+        logits = self.decoder(z)
+        if apply_sigmoid:
+            probs = tf.sigmoid(logits)
+            return probs
+        return logits
+    
+    def get_config(self):
         return {
-            "latent_dim" : self.latent_dim,
-            "input_shape" : self.input_shape,
-        }
-    
-    
+                "latent_dim" : self.latent_dim,
+                "input_dim" : self.input_dim,
 
-
+            } 
+    
 def log_normal_pdf(sample, mean, logvar, raxis=1):
   log2pi = tf.math.log(2. * np.pi)
   return tf.reduce_sum(
@@ -112,7 +147,7 @@ class VariationalAutoEncoderModel(ADModel):
         """
         latent_dim = 8
         
-        self.AD_model = VAE( latent_dim, inputs_shape)
+        self.AD_model = VAE(inputs_shape, latent_dim)
         print(self.AD_model.summary())
 
     def compile_model(self):
@@ -139,46 +174,6 @@ class VariationalAutoEncoderModel(ADModel):
         )
         
         self.history = { 'loss' : [], 'val_loss' : []}
-
-        
-    
-    def compute_loss(self, x):
-        #print("======")
-        x = tf.cast(x, tf.float32)
-        #print(tf.math.reduce_max(x))
-        #print(tf.math.reduce_min(x))
-        mean, logvar = self.AD_model.encode(x)
-        #print('mean:' , mean)
-        #print('logvar:',logvar)
-        z = self.AD_model.reparameterize(mean, logvar)
-        #print('z:',z)
-        x_logit = self.AD_model.decode(z)
-        #print('x_logit:',x_logit)
-        cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)
-        #print('cross_ent:',cross_ent)
-        logpx_z = -tf.reduce_sum(cross_ent,axis=1)
-        logpz = log_normal_pdf(z, 0., 0.)
-        logqz_x = log_normal_pdf(z, mean, logvar)
-        #print('logpx_z:',logpx_z)
-        #print('logpz:',logpz)
-        #print('logqz_x:',logqz_x)
-        #print('reduced mean:',tf.reduce_mean(logpx_z + logpz - logqz_x))
-        #print('mse:',tf.reduce_mean(tf.keras.losses.mse(x_logit, x)))
-        return tf.reduce_mean(tf.keras.losses.mse(x_logit, x))-0.001*tf.reduce_mean(logpx_z + logpz - logqz_x)
-        
-        
-    @tf.function
-    def train_step(self, x):
-        """Executes one training step and returns the loss.
-
-        This function computes the loss and gradients, and uses the latter to
-        update the model's parameters.
-        """
-        with tf.GradientTape() as tape:
-            loss = self.compute_loss(x)
-        gradients = tape.gradient(loss, self.AD_model.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.AD_model.trainable_variables))
-        return loss
 
     def fit(
         self,
@@ -220,9 +215,9 @@ class VariationalAutoEncoderModel(ADModel):
             for train_x in train_ds:
                 ibatch += 1
                 callbacks.on_train_batch_begin(ibatch, logs=logs)
-                self.train_step(train_x)
+                self.AD_model.train_step(train_x)
                 callbacks.on_train_batch_end(ibatch, logs=logs)
-                loss(self.compute_loss(train_x))
+                loss(self.AD_model.compute_loss(train_x))
             self.history['loss'].append(loss.result())
             end_time = time.time()
 
@@ -231,8 +226,8 @@ class VariationalAutoEncoderModel(ADModel):
             for test_x in val_ds:
                 itest_batch += 1
                 callbacks.on_test_batch_begin(itest_batch, logs=logs)
-                val_loss(self.compute_loss(test_x))
-                running_loss = self.compute_loss(test_x)
+                val_loss(self.AD_model.compute_loss(test_x))
+                running_loss = self.AD_model.compute_loss(test_x)
                 callbacks.on_test_batch_end(itest_batch, logs=logs)
             elbo = val_loss.result()
             
@@ -290,10 +285,13 @@ class VariationalAutoEncoderModel(ADModel):
 
     @ADModel.load_decorator
     def load(self, out_dir: str = "None"):
+        from model.VariationalAutoEncoderModel import VAE
+
         """Load the model file
 
         Args:
             out_dir (str, optional): Where to load it if not in the output_directory. Defaults to "None".
         """
+
         # Load the model
-        self.AD_model = load_model(f"{out_dir}/model/saved_model.keras")
+        self.AD_model = load_model(f"{out_dir}/model/saved_model.keras",custom_objects={"VAE": VAE})

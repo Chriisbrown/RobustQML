@@ -1,17 +1,15 @@
-"""AutoEncoder model child class
-
-Written 02/01/2026 cebrown@cern.ch
-"""
-
 import json
 import os
 import time 
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
+
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from data.dataset import DataSet
 
 import keras
 from keras.models import load_model
@@ -21,83 +19,112 @@ import tensorflow as tf
 
 from sklearn.metrics import mean_absolute_error
 
-keras.saving.get_custom_objects().clear()
+#keras.saving.get_custom_objects().clear()
 
-@keras.saving.register_keras_serializable(package="VAE")
-class VAE(keras.Model):
-  """variational autoencoder adapted from:
-     https://www.tensorflow.org/tutorials/generative/cvae
-  """
-
-  def __init__(self, latent_dim, input_shape):
-    super(VAE, self).__init__()
-    self.latent_dim = latent_dim
-    self.input_shape = input_shape
-    self.encoder = keras.Sequential(
+@keras.saving.register_keras_serializable(package="VariationalAutoEncoder")
+class AXOVAE(keras.Model):
+    def __init__(self, input_dim, latent_dim, **kwargs):
+        super(AXOVAE, self).__init__(**kwargs)
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+        self.encoder = keras.Sequential(
         [
-            keras.layers.InputLayer(shape=(input_shape,), name='model_input'),
+            keras.layers.InputLayer(shape=(input_dim,), name='model_input'),
             Dense(32,activation='relu'),
             Dense(16,activation='relu'),
             Dense(8,activation='relu'),
             Dense(latent_dim + latent_dim),
-        ]
-    )
+            ]
+        )
 
-    self.decoder = keras.Sequential(
-        [
-            keras.layers.InputLayer(input_shape=(latent_dim,)),
-            Dense(8,activation='relu'),
-            Dense(16,activation='relu'),
-            Dense(32,activation='relu'),
-            Dense(input_shape,activation='linear',name='model_output')
-        ]
-    )
+        self.decoder = keras.Sequential(
+            [
+                keras.layers.InputLayer(input_shape=(latent_dim,)),
+                Dense(8,activation='relu'),
+                Dense(16,activation='relu'),
+                Dense(32,activation='relu'),
+                Dense(input_dim,activation='linear',name='model_output')
+            ]
+        )
 
-  @tf.function
-  def sample(self, eps=None):
-    if eps is None:
-      eps = tf.random.normal(shape=(100, self.latent_dim))
-    return self.decode(eps, apply_sigmoid=True)
+        self.total_loss_tracker = tf.keras.metrics.Mean(name="total_loss")
+        self.reconstruction_loss_tracker = tf.keras.metrics.Mean(name="reco_loss")
+        self.kl_loss_tracker = tf.keras.metrics.Mean(name="kl_loss")
 
-  def encode(self, x):
-    mean, logvar = tf.split(self.encoder(x), num_or_size_splits=2, axis=1)
-    return mean, logvar
+    def reparameterization(self, mean, log_var):
+        epsilon = tf.random.normal(tf.shape(log_var))
+        return mean + tf.exp(0.5 * log_var) * epsilon
 
-  def reparameterize(self, mean, logvar):
-    eps = tf.random.normal(shape=mean.shape)
-    return eps * tf.exp(logvar * .5) + mean
-
-  def decode(self, z, apply_sigmoid=False):
-    logits = self.decoder(z)
-    if apply_sigmoid:
-      probs = tf.sigmoid(logits)
-      return probs
-    return logits
+    def call(self, inputs):
+        mean, log_var = tf.split(self.encoder(inputs), num_or_size_splits=2, axis=1)
+        z = self.reparameterization(mean, log_var)
+        x_hat = self.decoder(z)
+        return x_hat, mean, log_var
     
-  def get_config(self):
+    @tf.function
+    def train_step(self, data):
+        with tf.GradientTape() as tape:
+            x_hat, mean, log_var = self(data)
+            
+            reconstruction_loss = tf.reduce_mean(
+                tf.keras.losses.mse(data, x_hat)
+            )
+            
+            kl_loss = -0.5 * tf.reduce_mean(
+                1 + log_var - tf.square(mean) - tf.exp(log_var)
+            )
+            
+            total_loss = reconstruction_loss + kl_loss
+            
+        gradients = tape.gradient(total_loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.total_loss_tracker.update_state(total_loss)
+        self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+        self.kl_loss_tracker.update_state(kl_loss)
+
+        
+        return {
+            "total_loss": total_loss,
+            "reconstruction_loss": reconstruction_loss,
+            "kl_loss": kl_loss
+        }
+        
+    @tf.function
+    def test_step(self, data):
+        x_hat, mean, log_var = self(data)
+            
+        reconstruction_loss = tf.reduce_mean(
+                tf.keras.losses.mse(data, x_hat)
+            )
+            
+        kl_loss = -0.5 * tf.reduce_mean(
+                1 + log_var - tf.square(mean) - tf.exp(log_var)
+            )
+            
+        total_loss = reconstruction_loss + kl_loss
+        
+        return {
+            "total_loss": total_loss,
+            "reconstruction_loss": reconstruction_loss,
+            "kl_loss": kl_loss
+        }
+        
+        
+    def get_config(self):
         return {
             "latent_dim" : self.latent_dim,
-            "input_shape" : self.input_shape,
+            "input_dim" : self.input_dim,
         }
-    
-    
-
-
-def log_normal_pdf(sample, mean, logvar, raxis=1):
-  log2pi = tf.math.log(2. * np.pi)
-  return tf.reduce_sum(
-      -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar + log2pi),
-      axis=raxis)
 
 
 # Register the model in the factory with the string name corresponding to what is in the yaml config
-@ADModelFactory.register('VariationalAutoEncoderModel')
-class VariationalAutoEncoderModel(ADModel):
+@ADModelFactory.register('AXOVariationalAutoEncoderModel')
+class AXOVariationalAutoEncoderModel(ADModel):
 
-    """VariationalAutoEncoderModel class
+    """AXOVariationalAutoEncoder class
 
     Args:
-        VariationalAutoEncoderModel (_type_): Base class of a AutoEncoderModel
+        AXOVariationalAutoEncoder (_type_): Base class of a AutoEncoderModel
     """
 
     def build_model(self, inputs_shape: tuple):
@@ -108,7 +135,7 @@ class VariationalAutoEncoderModel(ADModel):
         """
         latent_dim = 8
         
-        self.AD_model = VAE( latent_dim, inputs_shape)
+        self.AD_model = AXOVAE( inputs_shape, latent_dim)
         print(self.AD_model.summary())
 
     def compile_model(self):
@@ -136,49 +163,10 @@ class VariationalAutoEncoderModel(ADModel):
         
         self.history = { 'loss' : [], 'val_loss' : []}
 
-        
-    
-    def compute_loss(self, x):
-        #print("======")
-        x = tf.cast(x, tf.float32)
-        #print(tf.math.reduce_max(x))
-        #print(tf.math.reduce_min(x))
-        mean, logvar = self.AD_model.encode(x)
-        #print('mean:' , mean)
-        #print('logvar:',logvar)
-        z = self.AD_model.reparameterize(mean, logvar)
-        #print('z:',z)
-        x_logit = self.AD_model.decode(z)
-        #print('x_logit:',x_logit)
-        cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)
-        #print('cross_ent:',cross_ent)
-        logpx_z = -tf.reduce_sum(cross_ent,axis=1)
-        logpz = log_normal_pdf(z, 0., 0.)
-        logqz_x = log_normal_pdf(z, mean, logvar)
-        #print('logpx_z:',logpx_z)
-        #print('logpz:',logpz)
-        #print('logqz_x:',logqz_x)
-        #print('reduced mean:',tf.reduce_mean(logpx_z + logpz - logqz_x))
-        #print('mse:',tf.reduce_mean(tf.keras.losses.mse(x_logit, x)))
-        return tf.reduce_mean(tf.keras.losses.mse(x_logit, x))-0.001*tf.reduce_mean(logpx_z + logpz - logqz_x)
-        
-        
-    @tf.function
-    def train_step(self, x):
-        """Executes one training step and returns the loss.
-
-        This function computes the loss and gradients, and uses the latter to
-        update the model's parameters.
-        """
-        with tf.GradientTape() as tape:
-            loss = self.compute_loss(x)
-        gradients = tape.gradient(loss, self.AD_model.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.AD_model.trainable_variables))
-        return loss
 
     def fit(
         self,
-        train: npt.NDArray[np.float64],
+        X_train: DataSet,
     ):
         """Fit the model to the training dataset
 
@@ -190,6 +178,7 @@ class VariationalAutoEncoderModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
+        train = X_train.get_training_dataset()
         
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
@@ -209,38 +198,45 @@ class VariationalAutoEncoderModel(ADModel):
         for epoch in range(1, self.training_config['epochs'] + 1):
             start_time = time.time()
             callbacks.on_epoch_begin(epoch, logs=logs)
-            losses = []
             ibatch = 0
-            loss = tf.keras.metrics.Mean()
+            running_loss = 0
             for train_x in train_ds:
                 ibatch += 1
                 callbacks.on_train_batch_begin(ibatch, logs=logs)
-                self.train_step(train_x)
+                running_loss += self.AD_model.train_step(train_x)['total_loss']
                 callbacks.on_train_batch_end(ibatch, logs=logs)
-                loss(self.compute_loss(train_x))
-            self.history['loss'].append(loss.result())
+            self.history['loss'].append(running_loss/ibatch)
             end_time = time.time()
 
             itest_batch = 0
-            val_loss = tf.keras.metrics.Mean()
+            running_val_loss = {'total': 0, 'reco':0,'kl':0}
             for test_x in val_ds:
                 itest_batch += 1
                 callbacks.on_test_batch_begin(itest_batch, logs=logs)
-                val_loss(self.compute_loss(test_x))
-                running_loss = self.compute_loss(test_x)
+                losses = self.AD_model.test_step(test_x)
+                running_val_loss['total'] += losses['total_loss']
+                running_val_loss['reco'] += losses['reconstruction_loss']
+                running_val_loss['kl'] += losses['kl_loss']
+
                 callbacks.on_test_batch_end(itest_batch, logs=logs)
-            elbo = val_loss.result()
             
-            print('Epoch: {}, Test set loss: {}, time elapse for current epoch: {}, current lr: {}'
-            .format(epoch, elbo, end_time - start_time, self.optimizer.learning_rate.numpy()))
+            print('Epoch: {}, Test set total loss: {}, total reco loss: {},total kl loss: {}, time elapse for current epoch: {}, current lr: {}'
+            .format(epoch, running_val_loss['total']/itest_batch, running_val_loss['reco']/itest_batch, running_val_loss['kl']/itest_batch, end_time - start_time, self.optimizer.learning_rate.numpy()))
             
-            self.history['val_loss'].append(elbo)
-            logs['val_loss'] = elbo
+            self.history['val_loss'].append(running_val_loss['total']/itest_batch)
+            logs['val_loss'] = running_val_loss['total']/itest_batch
             callbacks.on_epoch_end(epoch, logs=logs)
         callbacks.on_train_end(logs=logs) 
 
-                
-    def predict(self, X_test) -> tuple:
+    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+        
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+            
         """Predict method for model
 
         Args:
@@ -250,20 +246,14 @@ class VariationalAutoEncoderModel(ADModel):
             tuple: (class_predictions , pt_ratio_predictions)
         """
         
-        x = tf.cast(X_test, tf.float32)
-        mean, logvar = self.AD_model.encode(x)
-        print('mean:' , mean)
-        print('logvar:',logvar)
-        mu2 = np.linalg.vector_norm(mean,axis=1)
-        z = self.AD_model.reparameterize(mean, logvar)
-        print('z:',z)
-        x_logit = self.AD_model.decode(z)
-        print('x:',X_test)
-        print('x predict:',x_logit)
-        ad_scores = tf.keras.losses.mse(x_logit, x)
-        print('ad score:',ad_scores)
+        x_hat, mean, log_var = self.AD_model(test)
+        ad_scores = tf.keras.losses.mae(x_hat, test)
         ad_scores = ad_scores._numpy()
-        return ad_scores
+        if return_score:
+            return ad_scores
+        else:
+            return x_hat
+    
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

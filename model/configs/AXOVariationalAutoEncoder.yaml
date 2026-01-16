@@ -1,4 +1,4 @@
-model: AXOVAE
+model: AXOVariationalAutoEncoderModel
 run_config :
   verbose : 2
   debug : True

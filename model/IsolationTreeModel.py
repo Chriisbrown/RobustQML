@@ -50,7 +50,13 @@ class IsolationTreeModel(ADModel):
         Args:
             train (DataSet): train dataset
         """
-        self.AD_model = ydf.IsolationForestLearner(features=X_train.training_columns).train(X_train.data_frame)
+        self.AD_model = ydf.IsolationForestLearner(features=X_train.training_columns,
+                                                   num_trees=1000,
+                                                   split_axis='SPARSE_OBLIQUE',
+                                                   sparse_oblique_weights='CONTINUOUS',
+                                                   sparse_oblique_projection_density_factor=5.0,
+                                                   max_depth=-1
+                                                   ).train(X_train.data_frame)
         
 
     def predict(self, test: DataSet) -> npt.NDArray[np.float64]:

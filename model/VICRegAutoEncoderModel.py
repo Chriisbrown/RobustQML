@@ -130,7 +130,8 @@ class VICReg(keras.Model):
                     "Representation Loss":self.loss_tracker_repr.result(),
                     "Covariance Loss":self.loss_tracker_cov.result(),
                     "Standard Deviation Loss":self.loss_tracker_std.result()
-               }    
+               } 
+           
     def get_config(self):
             return {
                 "latent_dim" : self.latent_dim,
@@ -253,7 +254,7 @@ class VICRegModel(ADModel):
         val_ds = ds.skip(train_size)
         
         callbacks = tf.keras.callbacks.CallbackList(self.callbacks, add_history=True, model=self.AD_model)
-        logs = {'val_loss' : 0}
+        logs = {'vae val_loss' : 0}
         callbacks.on_train_begin(logs=logs)
         
         for epoch in range(1, self.training_config['epochs'] + 1):
@@ -263,20 +264,20 @@ class VICRegModel(ADModel):
             ibatch = 0
             loss = tf.keras.metrics.Mean()
             for train_x in train_ds:
-                latent_x = self.vicreg_model(train_x)
+                latent_x = self.vicreg_model.backbone(train_x)
                 ibatch += 1
                 callbacks.on_train_batch_begin(ibatch, logs=logs)
                 self.vae_model.train_step(latent_x)
                 callbacks.on_train_batch_end(ibatch, logs=logs)
                 loss(self.vae_model.compute_loss(latent_x))
-            self.history['loss'].append(loss.result())
+            self.history['vae loss'].append(loss.result())
             end_time = time.time()
 
             itest_batch = 0
             val_loss = tf.keras.metrics.Mean()
             for test_x in val_ds:
                 itest_batch += 1
-                latent_test = self.vicreg_model(test_x)
+                latent_test = self.vicreg_model.backbone(test_x)
                 callbacks.on_test_batch_begin(itest_batch, logs=logs)
                 val_loss(self.vae_model.compute_loss(latent_test))
                 callbacks.on_test_batch_end(itest_batch, logs=logs)
@@ -285,8 +286,8 @@ class VICRegModel(ADModel):
             print('Epoch: {}, Test set loss: {}, time elapse for current epoch: {}, current lr: {}'
             .format(epoch, elbo, end_time - start_time, self.vae_optimizer.learning_rate.numpy()))
             
-            self.history['val_loss'].append(elbo)
-            logs['val_loss'] = elbo
+            self.history['vae val_loss'].append(elbo)
+            logs['vae val_loss'] = elbo
             callbacks.on_epoch_end(epoch, logs=logs)
         callbacks.on_train_end(logs=logs) 
 
@@ -309,7 +310,7 @@ class VICRegModel(ADModel):
         """
         
         x = tf.cast(test, tf.float32)
-        x_latent = self.vicreg_model(x)
+        x_latent = self.vicreg_model.backbone(x)
         mean, logvar = self.vae_model.encode(x_latent)
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)

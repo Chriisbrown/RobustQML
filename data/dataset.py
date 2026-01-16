@@ -125,7 +125,6 @@ class DataSet:
         dataset = dataset.map(pad_jets,fn_kwargs = {'jet_feature_list' : self.jet_feature_list,'max_number_of_jets' :self.max_number_of_jets},remove_columns=self.jet_feature_list)
         dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.object_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.object_feature_list)        
         dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list})   
-        dataset = dataset.map(normalise,fn_kwargs = {'columns' : self.training_columns})
         return dataset
 
     def load_data_from_HF(self, filepath: str, max_number_of_events : int = 2000):
@@ -289,4 +288,14 @@ class DataSet:
         
     def set_label(self, label):
         self.data_frame['event_label'] = (np.ones(len(self.data_frame)) * label).astype(int)
+        
+        
+        
+    def phi_rotate(self):
+        phi_columns = []
+        for column in self.training_columns:
+            if "phi" in column:
+                phi_columns.append(column)
+        self.data_frame[phi_columns] = self.data_frame[phi_columns]
+        
         

@@ -3,3 +3,4 @@ from model.VariationalAutoEncoderModel import VariationalAutoEncoderModel, VAE
 from model.IsolationTreeModel import IsolationTreeModel
 from model.AXOVariationalAutoEncoderModel import AXOVariationalAutoEncoderModel, AXOVAE
 from model.VICRegAutoEncoderModel import VICRegModel
+from model.ContrastiveEmbeddingModel import ContrastiveEmbeddingModel

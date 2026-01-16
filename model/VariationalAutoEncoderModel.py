@@ -29,31 +29,30 @@ from sklearn.metrics import mean_absolute_error
 
 @keras.saving.register_keras_serializable(package="VAE")
 class VAE(keras.Model):
-    def __init__(self, input_dim, latent_dim,**kwargs):
+    def __init__(self, input_dim, latent_dim, encoder_layers,decoder_layers,**kwargs):
         """variational autoencoder adapted from:
             https://www.tensorflow.org/tutorials/generative/cvae
         """
         super().__init__(**kwargs)
         self.input_dim = input_dim
         self.latent_dim = latent_dim
+        self.encoder_layers = encoder_layers
+        self.decoder_layers = decoder_layers
+        
+        enc_layers = [Dense(encoder_layer,activation='relu') for encoder_layer in encoder_layers]
+        enc_layers.insert(0,keras.layers.InputLayer(shape=(input_dim,), name='model_input'))
+        enc_layers.append(Dense(latent_dim + latent_dim))
+        
+        dec_layers = [Dense(decoder_layer,activation='relu') for decoder_layer in decoder_layers]
+        dec_layers.insert(0,keras.layers.InputLayer(input_shape=(latent_dim,)))
+        dec_layers.append( Dense(input_dim,activation='linear',name='model_output'))
+        
         self.encoder = keras.Sequential(
-            [
-                keras.layers.InputLayer(shape=(input_dim,), name='model_input'),
-                Dense(32,activation='relu'),
-                Dense(16,activation='relu'),
-                Dense(8,activation='relu'),
-                Dense(latent_dim + latent_dim),
-            ]
+            enc_layers
         )
 
         self.decoder = keras.Sequential(
-            [
-                keras.layers.InputLayer(input_shape=(latent_dim,)),
-                Dense(8,activation='relu'),
-                Dense(16,activation='relu'),
-                Dense(32,activation='relu'),
-                Dense(input_dim,activation='linear',name='model_output')
-            ]
+            dec_layers
         )
 
     @tf.function
@@ -119,7 +118,8 @@ class VAE(keras.Model):
         return {
                 "latent_dim" : self.latent_dim,
                 "input_dim" : self.input_dim,
-
+                "encoder_layers" : self.encoder_layers,
+                "decoder_layers" : self.decoder_layers,
             } 
     
 def log_normal_pdf(sample, mean, logvar, raxis=1):
@@ -147,7 +147,7 @@ class VariationalAutoEncoderModel(ADModel):
         """
         latent_dim = 8
         
-        self.AD_model = VAE(inputs_shape, latent_dim)
+        self.AD_model = VAE(inputs_shape, self.model_config['latent_dim'],self.model_config['encoder_layers'],self.model_config['decoder_layers'])
         print(self.AD_model.summary())
 
     def compile_model(self):

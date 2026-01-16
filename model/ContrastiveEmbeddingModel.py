@@ -10,7 +10,6 @@ import time
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import random
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
 from data.dataset import DataSet
@@ -29,28 +28,95 @@ from model.VariationalAutoEncoderModel import VAE
 
 from tqdm import tqdm
 
-from sklearn.metrics import pairwise_distances
+def SimCLR_contrastive_loss(z1, z2, temperature=0.5,**kwargs):
+        # First: Concatenate both batches of embeddings (positive pairs)
+        z = tf.concat([z1, z2], axis=0)  # shape: (2N, D), where N is batch size
+
+        # Cosine similarity matrix between all embeddings (assumes z is L2-normalized)
+        sim = tf.matmul(z, z, transpose_b=True)  # shape: (2N, 2N), sim[i][j] = similarity between sample i and j
+        sim /= temperature  # scale similarities by temperature (sharpening)
+
+        # Create some positive/negative pair labels — position i matches with i + N ( same image, different view)
+        batch_size = tf.shape(z1)[0]
+        labels = tf.range(batch_size)
+        labels = tf.concat([labels, labels], axis=0)  # shape: (2N,)
+
+        # Remove self-similarities (the diagonal) from similarity matrix, dont need to do similarity with itselt
+        mask = tf.eye(2 * batch_size)  # identity matrix
+        sim = sim - 1e9 * mask  # set diagonal to a large negative number so it's ignored in softmax, HACKY! COuld do masking but expensive
+
+        # Get positive similarities from the similarity matrix
+        # Positive pairs are offset by +N and -N in the 2N batch
+        positives = tf.concat([
+            tf.linalg.diag_part(sim, k=batch_size),   # sim[i][i+N]
+            tf.linalg.diag_part(sim, k=-batch_size)   # sim[i+N][i]
+        ], axis=0)  # shape: (2N,)
+
+        # Step 6: Compute the famous NT-Xent loss
+        numerator = tf.exp(positives)  # exp(similarity of positive pairs)
+        denominator = tf.reduce_sum(tf.exp(sim), axis=1)  # sum over all other similarities for each sample
+        loss = -tf.math.log(numerator / denominator)  # -log(positive / all)
+
+        # Step 7: Return average loss over the batch
+        return tf.reduce_mean(loss)
+    
+    
+def VICReg_contrastive_loss(x,x_p,batch_size,num_features,sim_coeff=50,std_coeff=50,cov_coeff=1,**kwargs):
+        repr_loss = keras.losses.mean_squared_error(x,x_p)
+            
+        x = x - tf.reduce_mean(x, axis=0, keepdims=True)
+        x_p = x_p - tf.reduce_mean(x_p, axis=0, keepdims=True)
+            
+        std_x = tf.sqrt(tf.math.reduce_variance(x, axis=0) + 0.0001)
+        std_x_p = tf.sqrt(tf.math.reduce_variance(x_p, axis=0) + 0.0001)
+            
+        std_loss = tf.reduce_mean(tf.nn.relu(1.0 - std_x)) / 2 + tf.reduce_mean(tf.nn.relu(1.0 - std_x_p)) / 2
+    
+        cov_x = tf.linalg.matmul(x, x, transpose_a=True) / (batch_size - 1.0)
+        cov_x_p = tf.linalg.matmul(x_p, x_p, transpose_a=True) / (batch_size - 1.0)
+            
+        cov_loss = (tf.reduce_sum(tf.square(off_diagonal(cov_x))) +  tf.reduce_sum(tf.square(off_diagonal(cov_x_p)))) / float(num_features)
+    
+        return sim_coeff * repr_loss + std_coeff * std_loss + cov_coeff * cov_loss
 
 
-class VICRegPreprocessing(tf.keras.layers.Layer):
+def choose_loss(choice: str):
+    """Choose the aggregator keras object based on an input string."""
+    if choice not in ["SimCLR", "VICReg"]:
+        raise ValueError(
+            choice, "Not implemented"
+        )
+    if choice == "SimCLR":
+        return SimCLR_contrastive_loss
+    elif choice == "VICReg":
+        return VICReg_contrastive_loss
+
+
+  
+class L2NormalizeLayer(tf.keras.layers.Layer):
+    def call(self, inputs):
+        return tf.math.l2_normalize(inputs, axis=1)
+  
+  
+class Preprocessing(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
         self.augment = tf.keras.Sequential([
-            tf.keras.layers.GaussianNoise(random.uniform(0, 1))
+            tf.keras.layers.GaussianNoise(0.01)
         ])
         
     def call(self, x):
-        return x, self.augment(x)
+        return self.augment(x), self.augment(x)
 
 def off_diagonal(x):
     n = tf.shape(x)[0]
     mask = ~tf.cast(tf.eye(n), tf.bool)
     return tf.boolean_mask(x, mask)
 
-@keras.saving.register_keras_serializable(package="VICReg")
-class VICReg(keras.Model):
-    def __init__(self, projection_dim, input_shape,batch_size,backbone_layers,projection_blocks):
-        super(VICReg, self).__init__()
+@keras.saving.register_keras_serializable(package="Contrastive")
+class Contrastive(keras.Model):
+    def __init__(self, projection_dim, input_shape,batch_size,backbone_layers,projection_blocks, loss):
+        super(Contrastive, self).__init__()
         self.latent_dim = projection_dim
         self.input_shape = input_shape
         
@@ -72,18 +138,20 @@ class VICReg(keras.Model):
             project_layers.append(BatchNormalization())
             project_layers.append(ReLU())
         project_layers.append(Dense(self.num_features, use_bias=False,activation='linear'))
+        project_layers.append(L2NormalizeLayer())
                 
         self.projector = keras.Sequential(project_layers)
         
         self.sim_coeff = 50
         self.std_coeff = 50
         self.cov_coeff = 1
+        self.temperature = 0.5
 
-        self.loss_tracker = tf.keras.metrics.Mean(name="Total_Loss")
-        self.loss_tracker_repr = tf.keras.metrics.Mean(name="Total_Loss_repr")
-        self.loss_tracker_std = tf.keras.metrics.Mean(name="Total_Loss_std")
-        self.loss_tracker_cov = tf.keras.metrics.Mean(name="Total_Loss_cov")
-
+        self.loss_tracker = tf.keras.metrics.Mean(name="loss")
+        
+        self.loss_func = choose_loss(loss)
+        
+    
 
     @tf.function
     def train_step(self, x_in):
@@ -97,56 +165,33 @@ class VICReg(keras.Model):
             x = self.projector(self.backbone(x, training=True) , training=True)
             x_p = self.projector(self.backbone(x_p, training=True) , training=True)
             
-            repr_loss = keras.losses.mean_squared_error(x,x_p)
-            
-            x = x - tf.reduce_mean(x, axis=0, keepdims=True)
-            x_p = x_p - tf.reduce_mean(x_p, axis=0, keepdims=True)
-            
-            std_x = tf.sqrt(tf.math.reduce_variance(x, axis=0) + 0.0001)
-            std_x_p = tf.sqrt(tf.math.reduce_variance(x_p, axis=0) + 0.0001)
-            
-            std_loss = tf.reduce_mean(tf.nn.relu(1.0 - std_x)) / 2 + tf.reduce_mean(tf.nn.relu(1.0 - std_x_p)) / 2
-    
-            cov_x = tf.linalg.matmul(x, x, transpose_a=True) / (self.batch_size - 1.0)
-            cov_x_p = tf.linalg.matmul(x_p, x_p, transpose_a=True) / (self.batch_size - 1.0)
-            
-            cov_loss = (tf.reduce_sum(tf.square(off_diagonal(cov_x))) +  tf.reduce_sum(tf.square(off_diagonal(cov_x_p)))) / float(self.num_features)
-    
-            loss = self.sim_coeff * repr_loss + self.std_coeff * std_loss + self.cov_coeff * cov_loss
+            loss = self.loss_func(x, x_p,batch_size=self.batch_size,num_features=self.num_features)
+            #loss = VICReg_contrastive_loss(x, x_p,s)
             
             gradients = tape.gradient(loss, self.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-            
-            self.loss_tracker.update_state(loss)
-            self.loss_tracker_repr.update_state(repr_loss)
-            self.loss_tracker_cov.update_state(cov_loss)
-            self.loss_tracker_std.update_state(std_loss)
 
-            return {"Loss":self.loss_tracker.result(),
-                    "Representation Loss":self.loss_tracker_repr.result(),
-                    "Covariance Loss":self.loss_tracker_cov.result(),
-                    "Standard Deviation Loss":self.loss_tracker_std.result()
-               } 
+
+            return {"loss":loss} 
            
     def get_config(self):
             return {
                 "projection_dim" : self.latent_dim,
                 "input_shape" : self.input_shape,
                 "backbone_layers" : self.backbone_layers,
-                "projection_blocks" : self.projection_blocks,
-                "batch_size" : self.batch_size
+                "projection_blocks" : self.projection_blocks
             }
     
 
 
 # Register the model in the factory with the string name corresponding to what is in the yaml config
-@ADModelFactory.register('VICRegModel')
-class VICRegModel(ADModel):
+@ADModelFactory.register('ContrastiveEmbeddingModel')
+class ContrastiveEmbeddingModel(ADModel):
 
-    """VICRegModel class
+    """ContrastiveEmbeddingModel class
 
     Args:
-        VICRegModel (_type_): Base class of a AutoEncoderModel
+        ContrastiveEmbeddingModel (_type_): Base class of a AutoEncoderModel
     """
 
     def build_model(self, inputs_shape: tuple):
@@ -156,17 +201,18 @@ class VICRegModel(ADModel):
             inputs_shape (tuple): Shape of the input
         """
         
-        self.vicreg_model = VICReg(projection_dim=self.model_config['projection_dim'],
+        self.contrastive_model = Contrastive(projection_dim=self.model_config['projection_dim'],
                                    input_shape=inputs_shape,
                                    batch_size=self.training_config['batch_size'],
                                    backbone_layers=self.model_config['backbone_layers'],
-                                   projection_blocks=self.model_config['projection_blocks'])
+                                   projection_blocks=self.model_config['projection_blocks'],
+                                   loss=self.training_config['embedding_loss'])
         
         self.vae_model = VAE(input_dim=self.model_config['projection_dim'],
                              latent_dim=self.model_config['latent_dim'],
                              encoder_layers=self.model_config['encoder_layers'],
                              decoder_layers=self.model_config['decoder_layers'])
-        print(self.vicreg_model.summary())
+        print(self.contrastive_model.summary())
         print(self.vae_model.summary())
 
     def compile_model(self):
@@ -178,11 +224,11 @@ class VICRegModel(ADModel):
         self.repr_optimizer = keras.optimizers.Adam(learning_rate=self.training_config['learning_rate'])
 
         # compile the tensorflow model setting the loss and metrics
-        self.vicreg_model.compile(
+        self.contrastive_model.compile(
             optimizer=self.repr_optimizer
         )
         
-        self.history = { 'Vicreg Loss' : [], 'Representation Loss' : [], 'Covariance Loss' : [], 'Standard Deviation Loss' : [],'loss' : [], 'val_loss' : []}
+        self.history = { 'Embedding Loss' : [],'loss' : [], 'val_loss' : []}
         
         self.vae_callbacks = [
             EarlyStopping(monitor='val_loss', patience=self.training_config['EarlyStopping_patience'],mode='min'),
@@ -217,7 +263,7 @@ class VICRegModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        augment = VICRegPreprocessing()
+        augment = Preprocessing()
         train = X_train.get_training_dataset()
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
@@ -226,29 +272,23 @@ class VICRegModel(ADModel):
             .batch(self.training_config['batch_size'])
             .prefetch(tf.data.AUTOTUNE)
         )
-        
-        
+
         for epoch in tqdm(range(0, self.training_config['constrastive_epochs'],1)):
-            running_loss = {'total': 0, 'repr':0,'cov':0, 'std':0}
+            running_loss = 0
             ibatch = 0
             for train_x,train_x_p in ds:
                 ibatch += 1
 
-                loss = self.vicreg_model.train_step((train_x,train_x_p))
+                loss = self.contrastive_model.train_step((train_x,train_x_p))
                 
-                running_loss['total'] += loss["Loss"]
-                running_loss['repr'] += loss["Representation Loss"]
-                running_loss['cov'] += loss["Covariance Loss"]
-                running_loss['std'] += loss["Standard Deviation Loss"]
+                running_loss += loss["loss"]
                 
-            self.history['Vicreg Loss'].append(running_loss['total'] /ibatch)
-            self.history['Representation Loss'].append(running_loss['repr'] /ibatch)
-            self.history['Covariance Loss'].append(running_loss['cov'] /ibatch)
-            self.history['Standard Deviation Loss'].append(running_loss['std'] /ibatch)
+            self.history['loss'].append(running_loss /ibatch)
+
             
-            print('Epoch: {}, total loss: {}, represenation loss: {},cov loss: {}, std loss: {}'
-                .format(epoch, running_loss['total']/ibatch, running_loss['repr']/ibatch, running_loss['cov']/ibatch, running_loss['std']/ibatch))
-            self.history['loss'].append(running_loss['total']/ibatch)
+            print('Embedding Epoch: {}, total loss: {}'
+                .format(epoch, running_loss/ibatch))
+            self.history['loss'].append(running_loss)
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
             .shuffle(self.training_config['batch_size'])
@@ -271,7 +311,7 @@ class VICRegModel(ADModel):
             ibatch = 0
             loss = tf.keras.metrics.Mean()
             for train_x in train_ds:
-                latent_x = self.vicreg_model.backbone(train_x)
+                latent_x = self.contrastive_model.backbone(train_x)
                 ibatch += 1
                 callbacks.on_train_batch_begin(ibatch, logs=logs)
                 self.vae_model.train_step(latent_x)
@@ -284,7 +324,7 @@ class VICRegModel(ADModel):
             val_loss = tf.keras.metrics.Mean()
             for test_x in val_ds:
                 itest_batch += 1
-                latent_test = self.vicreg_model.backbone(test_x)
+                latent_test = self.contrastive_model.backbone(test_x)
                 callbacks.on_test_batch_begin(itest_batch, logs=logs)
                 val_loss(self.vae_model.compute_loss(latent_test))
                 callbacks.on_test_batch_end(itest_batch, logs=logs)
@@ -317,7 +357,7 @@ class VICRegModel(ADModel):
         """
         
         x = tf.cast(test, tf.float32)
-        x_latent = self.vicreg_model.backbone(x)
+        x_latent = self.contrastive_model.backbone(x)
         mean, logvar = self.vae_model.encode(x_latent)
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
@@ -328,11 +368,6 @@ class VICRegModel(ADModel):
             return ad_scores
         else:
             return x_logit
-        
-    def distance(self, test):
-        x_hat = self.predict(test, return_score=False)
-        x_latent = self.vicreg_model.backbone(test)
-        return pairwise_distances(x_latent,x_hat)
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator
@@ -345,8 +380,8 @@ class VICRegModel(ADModel):
         # Export the model
         os.makedirs(os.path.join(out_dir, 'model'), exist_ok=True)
         # Use keras save format !NOT .h5! due to depreciation
-        export_path = os.path.join(out_dir, "model/vicreg_saved_model.keras")
-        self.vicreg_model.save(export_path)
+        export_path = os.path.join(out_dir, "model/contrastive_saved_model.keras")
+        self.contrastive_model.save(export_path)
         print(f"Model saved to {export_path}")
         export_path = os.path.join(out_dir, "model/vae_saved_model.keras")
         self.vae_model.save(export_path)
@@ -360,5 +395,5 @@ class VICRegModel(ADModel):
             out_dir (str, optional): Where to load it if not in the output_directory. Defaults to "None".
         """
         # Load the model
-        self.vicreg_model = load_model(f"{out_dir}/model/vicreg_saved_model.keras")
+        self.contrastive_model = load_model(f"{out_dir}/model/contrastive_saved_model.keras")
         self.vae_model = load_model(f"{out_dir}/model/vae_saved_model.keras")

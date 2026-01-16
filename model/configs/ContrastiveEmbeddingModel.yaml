@@ -1,11 +1,11 @@
-model: VICRegModel
+model: ContrastiveEmbeddingModel
 run_config :
   verbose : 2
   debug : True
   num_threads : 64
 
 model_config :
-  name : VICReg
+  name : ContrastiveModel
   projection_dim : 8
   projection_blocks : 3
   backbone_layers : [32,16]
@@ -25,3 +25,5 @@ training_config :
   ReduceLROnPlateau_factor : 0.5
   ReduceLROnPlateau_patience : 5
   ReduceLROnPlateau_min_lr : 0.00001
+
+  embedding_loss : 'SimCLR'

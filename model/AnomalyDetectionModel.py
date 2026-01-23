@@ -92,6 +92,12 @@ class ADModel(ABC):
         Fit the model to the training data
         Must be written for child class
         """
+        
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        return None
+    
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        return None
 
     def save_decorator(save_func):
         """Decorator used to include additional

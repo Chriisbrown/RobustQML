@@ -167,6 +167,7 @@ class AXOVariationalAutoEncoderModel(ADModel):
     def fit(
         self,
         X_train: DataSet,
+        training_features : list,
     ):
         """Fit the model to the training dataset
 
@@ -178,7 +179,7 @@ class AXOVariationalAutoEncoderModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        train = X_train.get_training_dataset()
+        train = X_train[training_features]
         
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
@@ -247,12 +248,34 @@ class AXOVariationalAutoEncoderModel(ADModel):
         """
         
         x_hat, mean, log_var = self.AD_model(test)
-        ad_scores = tf.keras.losses.mae(x_hat, test)
+        mu2 = np.linalg.vector_norm(mean,axis=1)
+        ad_scores = tf.keras.losses.mse(x_hat, test)
         ad_scores = ad_scores._numpy()
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores
         else:
             return x_hat
+        
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        latent = self.AD_model.encoder(test)
+        return latent
+    
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        x_hat, mean, log_var = self.AD_model(test)
+        return mean, log_var
     
 
     # Decorated with save decorator for added functionality

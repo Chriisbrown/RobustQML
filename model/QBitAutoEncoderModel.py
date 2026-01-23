@@ -1,18 +1,22 @@
-"""AutoEncoder model child class
-
-Written 23/12/2025 cebrown@cern.ch
-"""
-
 import os
 
 import numpy as np
 import numpy.typing as npt
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
-import strawberryfields as sf
-from strawberryfields.ops   import *
-from random                 import uniform      as r 
+from data.dataset import DataSet
+import pandas as pd
 
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+from qiskit.circuit import Parameter
+
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
+import keras
+from keras.models import load_model
+from keras.layers import Dense
+
+import tensorflow as tf
 
 from sklearn.metrics import mean_absolute_error
 # Register the model in the factory with the string name corresponding to what is in the yaml config
@@ -26,91 +30,72 @@ class AutoEncoderModel(ADModel):
     """
 
     def build_model(self, inputs_shape: tuple):
-        """build model override, makes the model layer by layer
+        """build model override
 
         Args:
             inputs_shape (tuple): Shape of the input
         """
-        pass
         
-       
+        total_object = int(inputs_shape[0] / 3)
         
-    def substrate(self, n_modes, feats):
+        nt = total_object
         
-        """
-        QELM quantum substrate
-        
-        NB: seed must be inside the definition to make sure the substrate is always 
-            constant.
-        """
-        
-        random.seed(42)
+        # Registers (match the labels in your diagram)
+        q = QuantumRegister(total_object, "q")     
+        t = QuantumRegister(nt, "t")    
+        a = QuantumRegister(1, "a") 
+        m = ClassicalRegister(1, "m")  
 
+        qc = QuantumCircuit(q, t, a, m)
 
-        eng     = sf.Engine('gaussian')#, backend_options={'cutoff_dim': cutoff})
-        circ    = sf.Program(n_modes)
+        # Parameters θ0..θnq
+        x = [Parameter(f"x{i}") for i in range(total_object)]
+        y = [Parameter(f"y{i}") for i in range(total_object)]
+        z = [Parameter(f"z{i}") for i in range(total_object)]
+
+        # Ry layer on q0..q3
+        for i in range(total_object):
+            qc.rx(x[i], q[i])
+            qc.ry(y[i], q[i])
+            qc.rz(z[i], q[i])
+
+        # CNOT pattern
+        for i in range(total_object):
+            for j in range(i+1, total_object):
+                qc.cx(q[i], q[j])
+
+        # Ancilla H
+        qc.h(a[0])
+
+        # Controlled-SWAPs
+        for i in reversed(range(nt)):
+            qc.cswap(a[0], q[-(i+1)], t[-(i+1)])
+
+        # Final H + measure ancilla
+        qc.h(a[0])
+        qc.measure(a[0], m[0])
         
-        with circ.context as q:
-            
-            ### Data Embedding        
-            for i in range(n_modes):
-                # Dgate(2*feats[i]) | q[i]
-                Dgate(feats[i]) | q[i]
-            
-            ### Substrate
-            for i in range(n_modes - 1):
-                CXgate(r(0, 1)) | (q[i], q[i+1])
-            CXgate(r(0, 1)) | (q[-1], q[0])
-            
-        if eng.run_progs:
-            eng.reset()
-            
-        state = eng.run(circ).state
-        probs = []
-        for i in range(n_modes):
-            mPhoton = state.mean_photon(mode=i)
-            probs.append(mPhoton[0])
-            probs.append(mPhoton[1])
-            del mPhoton
-
-
-        del(eng)
-        del(circ)
+        self.AD_model = qc
+                
         
-        return np.array(probs)
-
-
 
     def compile_model(self):
         """compile the model generating callbacks and loss function
         Args:
         """
-        
 
     def fit(
         self,
-        train: npt.NDArray[np.float64],
+        X_train: DataSet,
     ):
         """Fit the model to the training dataset
 
         Args:
             X_train (npt.NDArray[np.float64]): X train dataset
-            
         """
-        
-        model_inputs = []
-
-
-        for dat in train:
-            probs = self.substrate(10, dat)
-            model_inputs.append(np.concatenate((probs, dat)))
-            del(probs)
-            
-        model_inputs = np.array(model_inputs)
-
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        
+        train = X_train.get_training_dataset()
         history = self.AD_model.fit(
             train.to_numpy(),
             train.to_numpy(),
@@ -124,8 +109,14 @@ class AutoEncoderModel(ADModel):
         
         self.history = history.history
         
+    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
         
-    def predict(self, X_test) -> float:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
         """Predict method for model
 
         Args:
@@ -134,10 +125,14 @@ class AutoEncoderModel(ADModel):
         Returns:
             float: model prediction
         """
-        model_outputs = self.AD_model.predict(X_test)
-        ad_scores = tf.keras.losses.mae(model_outputs, X_test)
+        model_outputs = self.AD_model.predict(test)
+        ad_scores = tf.keras.losses.mse(model_outputs, test)
         ad_scores = ad_scores._numpy()
-        return ad_scores
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
+        if return_score:
+            return ad_scores
+        else:
+            return model_outputs
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

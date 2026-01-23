@@ -32,15 +32,45 @@ from tqdm import tqdm
 from sklearn.metrics import pairwise_distances
 
 
+class FlatMaskingLayer(keras.layers.Layer):
+    def __init__(self, probability=0.5):
+        super().__init__()
+        self.probability = probability
+
+    def call(self, inputs):
+        mask = np.random.rand((inputs.shape[0]))
+        idx = mask < self.probability
+        mask[idx] = 0
+        mask[~idx] = 1
+        inputs = inputs * mask
+        return inputs
+    
+class PerObjectMaskingLayer(keras.layers.Layer):
+    def __init__(self, probability=0.5):
+        super().__init__()
+        self.probability = probability
+
+    def call(self, inputs):
+        input_shape = inputs.shape
+        total_object = int(inputs.shape[0] / 3)
+        inputs = tf.reshape(inputs,(total_object,3))
+        mask = np.random.rand(inputs.shape[0],inputs.shape[1])
+        idx = mask < self.probability
+        mask[idx] = 0
+        mask[~idx] = 1
+        inputs = inputs * mask
+        inputs = tf.reshape(inputs,input_shape)
+        return inputs
+
 class VICRegPreprocessing(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
         self.augment = tf.keras.Sequential([
-            tf.keras.layers.GaussianNoise(random.uniform(0, 1))
+            PerObjectMaskingLayer(0.2),
         ])
         
     def call(self, x):
-        return x, self.augment(x)
+        return self.augment(x), self.augment(x)
 
 def off_diagonal(x):
     n = tf.shape(x)[0]
@@ -206,6 +236,7 @@ class VICRegModel(ADModel):
     def fit(
         self,
         X_train: DataSet,
+        training_features : list,
     ):
         """Fit the model to the training dataset
 
@@ -218,7 +249,7 @@ class VICRegModel(ADModel):
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
         augment = VICRegPreprocessing()
-        train = X_train.get_training_dataset()
+        train = X_train[training_features]
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
             .shuffle(self.training_config['batch_size'])
@@ -322,12 +353,34 @@ class VICRegModel(ADModel):
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
         x_logit = self.vae_model.decode(z)
-        ad_scores = tf.keras.losses.mae(x_logit,x_latent)
+        ad_scores = tf.keras.losses.mse(x_logit,x_latent)
         ad_scores = ad_scores._numpy()
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores
         else:
             return x_logit
+        
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        x_latent = self.vicreg_model.backbone(test)
+        return x_latent
+    
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        x_latent = self.vicreg_model.backbone(test)
+        mean, logvar = self.vae_model.encode(x_latent)
+        return mean, logvar
         
     def distance(self, test):
         x_hat = self.predict(test, return_score=False)

@@ -178,6 +178,7 @@ class VariationalAutoEncoderModel(ADModel):
     def fit(
         self,
         X_train: DataSet,
+        training_features : list,
     ):
         """Fit the model to the training dataset
 
@@ -189,7 +190,7 @@ class VariationalAutoEncoderModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        train = X_train.get_training_dataset()
+        train = X_train[training_features]
         
         ds = (
             tf.data.Dataset.from_tensor_slices(train)
@@ -263,10 +264,31 @@ class VariationalAutoEncoderModel(ADModel):
         x_logit = self.AD_model.decode(z)
         ad_scores = tf.keras.losses.mae(x_logit, x)
         ad_scores = ad_scores._numpy()
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores
         else:
             return x_logit
+        
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        latent = self.AD_model.encoder(test)
+        return latent
+    
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        mean, logvar = self.AD_model.encode(test)
+        return mean, logvar
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

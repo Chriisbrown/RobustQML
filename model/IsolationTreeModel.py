@@ -12,6 +12,8 @@ import numpy.typing as npt
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
 from data.dataset import DataSet
 
+import pandas as pd
+
 from plot.basic import clusters
 
 import ydf 
@@ -44,22 +46,30 @@ class IsolationTreeModel(ADModel):
     def fit(
         self,
         X_train: DataSet,
+        training_features : list,
         ):
         """Fit the model to the training dataset
 
         Args:
             train (DataSet): train dataset
         """
-        self.AD_model = ydf.IsolationForestLearner(features=X_train.training_columns,
+        self.AD_model = ydf.IsolationForestLearner(features=training_features,
                                                    num_trees=1000,
                                                    split_axis='SPARSE_OBLIQUE',
                                                    sparse_oblique_weights='CONTINUOUS',
                                                    sparse_oblique_projection_density_factor=5.0,
                                                    max_depth=-1
-                                                   ).train(X_train.data_frame)
+                                                   ).train(X_train)
         
 
-    def predict(self, test: DataSet) -> npt.NDArray[np.float64]:
+    def predict(self, X_test: DataSet) -> npt.NDArray[np.float64]:
+        
+        if isinstance(X_test, DataSet):
+            test = X_test.data_frame
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test
+        else:
+            test = X_test
         """Predict method for model
 
         Args:
@@ -68,8 +78,15 @@ class IsolationTreeModel(ADModel):
         Returns:
             float: model prediction
         """
-        ad_scores = self.AD_model.predict(test.data_frame)
+        ad_scores = self.AD_model.predict(test)
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         return ad_scores
+    
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        return None
+    
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        return None
     
     
     

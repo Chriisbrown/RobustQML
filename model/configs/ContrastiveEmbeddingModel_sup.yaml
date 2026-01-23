@@ -27,5 +27,5 @@ training_config :
   ReduceLROnPlateau_patience : 5
   ReduceLROnPlateau_min_lr : 0.00001
 
-  embedding_loss : 'SimCLR'
+  embedding_loss : 'SupSimCLR'
   #embedding_loss : 'VICReg'

@@ -6,6 +6,8 @@ Written 02/01/2026 cebrown@cern.ch
 import json
 import os
 import time 
+import random
+import sys
 
 import numpy as np
 import numpy.typing as npt
@@ -22,22 +24,22 @@ from keras.layers import Dense,BatchNormalization,ReLU
 
 import tensorflow as tf
 
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error,pairwise_distances
 
 from model.VariationalAutoEncoderModel import VAE
 
 from tqdm import tqdm
 
-def SimCLR_contrastive_loss(z1, z2, temperature=0.5,**kwargs):
+def SimCLR_contrastive_loss(zs, temperature=0.5,**kwargs):
         # First: Concatenate both batches of embeddings (positive pairs)
-        z = tf.concat([z1, z2], axis=0)  # shape: (2N, D), where N is batch size
+        z = tf.concat([zs[0],zs[1]], axis=0)  # shape: (2N, D), where N is batch size
 
         # Cosine similarity matrix between all embeddings (assumes z is L2-normalized)
         sim = tf.matmul(z, z, transpose_b=True)  # shape: (2N, 2N), sim[i][j] = similarity between sample i and j
         sim /= temperature  # scale similarities by temperature (sharpening)
 
         # Create some positive/negative pair labels — position i matches with i + N ( same image, different view)
-        batch_size = tf.shape(z1)[0]
+        batch_size = tf.shape(zs)[1]
         labels = tf.range(batch_size)
         labels = tf.concat([labels, labels], axis=0)  # shape: (2N,)
 
@@ -60,12 +62,59 @@ def SimCLR_contrastive_loss(z1, z2, temperature=0.5,**kwargs):
         # Step 7: Return average loss over the batch
         return tf.reduce_mean(loss)
     
+def supervised_SimCLR_contrastive_loss(zs, labels, temperature=0.07,**kwargs):
+        labels = tf.reshape(labels, [-1, 1])
+        mask = tf.cast(tf.equal(labels, tf.transpose(labels)), tf.float32)
+        n_views = tf.shape(zs)[0]
+                
+        # First: Concatenate batches of embeddings 
+        contrast_feature = tf.concat(tf.unstack(zs, axis=1), axis=0)
+        anchor_feature = contrast_feature
+        anchor_count = n_views
+                
+        # Cosine similarity matrix between all embeddings (assumes z is L2-normalized)
+        sim = tf.matmul(anchor_feature, contrast_feature, transpose_b=True)  # shape: (2N, 2N), sim[i][j] = similarity between sample i and j
+        sim /= temperature  # scale similarities by temperature (sharpening)
+                
+        logits_max = tf.reduce_max(sim, axis=1, keepdims=True)
+        sim = sim - tf.stop_gradient(logits_max)
+
+
+        # Create some positive/negative pair labels — position i matches with i + N ( same image, different view)
+        batch_size = tf.shape(zs)[1]
+        labels = tf.range(batch_size)
+        labels = tf.concat([labels, labels], axis=0)  # shape: (2N,)
+
+        mask = tf.ensure_shape(mask, [None, None])
+        mask = tf.tile(mask, [anchor_count,n_views])
+
+        logits_mask = tf.ones_like(mask)
+        diag_indices = tf.range(batch_size * anchor_count)
+        diag_indices = tf.stack([diag_indices, diag_indices], axis=1)
+        logits_mask = tf.tensor_scatter_nd_update(
+            logits_mask, diag_indices, tf.zeros(batch_size * anchor_count)
+        )
+        
+
+        mask = mask * logits_mask
+
+        # Step 6: Compute the famous NT-Xent loss
+        exp_logits = tf.exp(sim) * logits_mask # exp(similarity of positive pairs)
+        log_prob = sim - tf.math.log( tf.reduce_sum(exp_logits, axis=1))  # sum over all other similarities for each sample
+
+        mask_sum = tf.reduce_sum(mask, axis=1)
+        mean_log_prob_pos = - tf.reduce_sum(mask * log_prob, axis=1) / mask_sum
+        
+        loss = tf.reshape(mean_log_prob_pos, [anchor_count, batch_size])
+        # Step 7: Return average loss over the batch
+        return tf.reduce_mean(loss)
     
-def VICReg_contrastive_loss(x,x_p,batch_size,num_features,sim_coeff=50,std_coeff=50,cov_coeff=1,**kwargs):
-        repr_loss = keras.losses.mean_squared_error(x,x_p)
+    
+def VICReg_contrastive_loss(zs,batch_size,num_features,sim_coeff=50,std_coeff=50,cov_coeff=1,**kwargs):
+        repr_loss = keras.losses.mean_squared_error(zs[0],zs[1])
             
-        x = x - tf.reduce_mean(x, axis=0, keepdims=True)
-        x_p = x_p - tf.reduce_mean(x_p, axis=0, keepdims=True)
+        x = zs[0] - tf.reduce_mean(zs[0], axis=0, keepdims=True)
+        x_p = zs[1] - tf.reduce_mean(zs[1], axis=0, keepdims=True)
             
         std_x = tf.sqrt(tf.math.reduce_variance(x, axis=0) + 0.0001)
         std_x_p = tf.sqrt(tf.math.reduce_variance(x_p, axis=0) + 0.0001)
@@ -82,7 +131,7 @@ def VICReg_contrastive_loss(x,x_p,batch_size,num_features,sim_coeff=50,std_coeff
 
 def choose_loss(choice: str):
     """Choose the aggregator keras object based on an input string."""
-    if choice not in ["SimCLR", "VICReg"]:
+    if choice not in ["SimCLR", "VICReg","SupSimCLR"]:
         raise ValueError(
             choice, "Not implemented"
         )
@@ -90,23 +139,54 @@ def choose_loss(choice: str):
         return SimCLR_contrastive_loss
     elif choice == "VICReg":
         return VICReg_contrastive_loss
+    elif choice == "SupSimCLR":
+        return supervised_SimCLR_contrastive_loss
 
 
   
 class L2NormalizeLayer(tf.keras.layers.Layer):
     def call(self, inputs):
         return tf.math.l2_normalize(inputs, axis=1)
-  
+    
+class FlatMaskingLayer(keras.layers.Layer):
+    def __init__(self, probability=0.5):
+        super().__init__()
+        self.probability = probability
+
+    def call(self, inputs):
+        mask = np.random.rand((inputs.shape[0]))
+        idx = mask < self.probability
+        mask[idx] = 0
+        mask[~idx] = 1
+        inputs = inputs * mask
+        return inputs
+    
+class PerObjectMaskingLayer(keras.layers.Layer):
+    def __init__(self, probability=0.5):
+        super().__init__()
+        self.probability = probability
+
+    def call(self, inputs):
+        input_shape = inputs.shape
+        total_object = int(inputs.shape[0] / 3)
+        inputs = tf.reshape(inputs,(total_object,3))
+        mask = np.random.rand(inputs.shape[0],inputs.shape[1])
+        idx = mask < self.probability
+        mask[idx] = 0
+        mask[~idx] = 1
+        inputs = inputs * mask
+        inputs = tf.reshape(inputs,input_shape)
+        return inputs
   
 class Preprocessing(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
         self.augment = tf.keras.Sequential([
-            tf.keras.layers.GaussianNoise(0.01)
+            PerObjectMaskingLayer(0.2)
         ])
         
-    def call(self, x):
-        return self.augment(x), self.augment(x)
+    def call(self, x,y):
+        return x, self.augment(x), y
 
 def off_diagonal(x):
     n = tf.shape(x)[0]
@@ -148,13 +228,12 @@ class Contrastive(keras.Model):
         self.temperature = 0.5
 
         self.loss_tracker = tf.keras.metrics.Mean(name="loss")
-        
-        self.loss_func = choose_loss(loss)
-        
+        self.loss=loss
+        self.loss_func = choose_loss(self.loss)
     
 
     @tf.function
-    def train_step(self, x_in):
+    def train_step(self, x_in,y):
         """Executes one training step and returns the loss.
 
         This function computes the loss and gradients, and uses the latter to
@@ -165,7 +244,7 @@ class Contrastive(keras.Model):
             x = self.projector(self.backbone(x, training=True) , training=True)
             x_p = self.projector(self.backbone(x_p, training=True) , training=True)
             
-            loss = self.loss_func(x, x_p,batch_size=self.batch_size,num_features=self.num_features)
+            loss = self.loss_func([x, x_p], labels=y, batch_size=self.batch_size,num_features=self.num_features)
             #loss = VICReg_contrastive_loss(x, x_p,s)
             
             gradients = tape.gradient(loss, self.trainable_variables)
@@ -179,7 +258,9 @@ class Contrastive(keras.Model):
                 "projection_dim" : self.latent_dim,
                 "input_shape" : self.input_shape,
                 "backbone_layers" : self.backbone_layers,
-                "projection_blocks" : self.projection_blocks
+                "projection_blocks" : self.projection_blocks,
+                "batch_size" : self.batch_size,
+                "loss" : self.loss,
             }
     
 
@@ -221,7 +302,7 @@ class ContrastiveEmbeddingModel(ADModel):
             num_samples (int): Number of samples in the training set used for scheduling
         """
         
-        self.repr_optimizer = keras.optimizers.Adam(learning_rate=self.training_config['learning_rate'])
+        self.repr_optimizer = keras.optimizers.Adam(learning_rate=self.training_config['emb_learning_rate'])
 
         # compile the tensorflow model setting the loss and metrics
         self.contrastive_model.compile(
@@ -251,7 +332,8 @@ class ContrastiveEmbeddingModel(ADModel):
 
     def fit(
         self,
-        X_train: DataSet,
+        X_train: pd.DataFrame,
+        training_columns: list
     ):
         """Fit the model to the training dataset
 
@@ -264,9 +346,9 @@ class ContrastiveEmbeddingModel(ADModel):
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
         augment = Preprocessing()
-        train = X_train.get_training_dataset()
+        train = X_train
         ds = (
-            tf.data.Dataset.from_tensor_slices(train)
+            tf.data.Dataset.from_tensor_slices((train[training_columns],train['event_label']))
             .shuffle(self.training_config['batch_size'])
             .map(augment, num_parallel_calls=tf.data.AUTOTUNE)
             .batch(self.training_config['batch_size'])
@@ -276,10 +358,10 @@ class ContrastiveEmbeddingModel(ADModel):
         for epoch in tqdm(range(0, self.training_config['constrastive_epochs'],1)):
             running_loss = 0
             ibatch = 0
-            for train_x,train_x_p in ds:
+            for train_x,train_x_p,y in ds:
                 ibatch += 1
 
-                loss = self.contrastive_model.train_step((train_x,train_x_p))
+                loss = self.contrastive_model.train_step((train_x,train_x_p),y)
                 
                 running_loss += loss["loss"]
                 
@@ -290,7 +372,7 @@ class ContrastiveEmbeddingModel(ADModel):
                 .format(epoch, running_loss/ibatch))
             self.history['loss'].append(running_loss)
         ds = (
-            tf.data.Dataset.from_tensor_slices(train)
+            tf.data.Dataset.from_tensor_slices((train[training_columns]))
             .shuffle(self.training_config['batch_size'])
             .batch(self.training_config['batch_size'])
             .prefetch(tf.data.AUTOTUNE)
@@ -362,13 +444,41 @@ class ContrastiveEmbeddingModel(ADModel):
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
         x_logit = self.vae_model.decode(z)
-        ad_scores = tf.keras.losses.mae(x_logit,x_latent)
+        ad_scores = tf.keras.losses.mse(x_logit,x_latent)
         ad_scores = ad_scores._numpy()
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores
         else:
             return x_logit
 
+    def distance(self, test):
+        x_hat = self.predict(test, return_score=False)
+        x_latent = self.contrastive_model.backbone(test)
+        return pairwise_distances(x_latent,x_hat)
+    
+    
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        latent = self.contrastive_model.backbone(test)
+        return latent
+    
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        if isinstance(X_test, DataSet):
+            test = X_test.get_training_dataset()
+        elif isinstance(X_test, pd.DataFrame):
+            test = X_test.to_numpy()
+        else:
+            test = X_test
+        x_latent = self.contrastive_model.backbone(test)
+        mean, logvar = self.vae_model.encode(x_latent)
+        return mean, logvar
+    
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator
     def save(self, out_dir: str = "None"):

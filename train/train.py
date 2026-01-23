@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 # Third parties
 import numpy as np
-
+import pandas as pd
 # Import from other modules
 from model.common import fromYaml
 from data.dataset import DataSet
@@ -11,14 +11,23 @@ from data.dataset import DataSet
 def train(model):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
-    data_train = DataSet.fromH5('dataset/QCD')
-    data_train.normalise()
-    # Get input shape
-    input_shape = len(data_train.training_columns)
-
+    
+    labels = {"QCD": 0,"QCDbb": 1}
+    #labels = {"QCD": 2}
+    dataset_list = []
+    for datasets in labels.keys():
+        data_test = DataSet.fromH5('dataset/'+datasets)
+        data_test.normalise()
+        data_test.set_label(labels[datasets])
+        dataset_list.append(data_test)
+        training_columns = data_test.training_columns
+        
+    full_data_frame = pd.concat([dataset.data_frame for dataset in dataset_list])
+    
+    input_shape = len(training_columns)
     model.build_model(input_shape)
     model.compile_model()
-    model.fit(data_train)
+    model.fit(full_data_frame,training_columns)
     model.save()
     model.plot_loss()
 

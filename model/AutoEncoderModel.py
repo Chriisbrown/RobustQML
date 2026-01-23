@@ -56,7 +56,7 @@ class AutoEncoderModel(ADModel):
         decoder = Dense(inputs_shape,activation='sigmoid',name='model_output')(decoder)
                 
         self.AD_model = keras.Model(inputs=inputs, outputs=decoder)
-
+        
     def compile_model(self):
         """compile the model generating callbacks and loss function
         Args:
@@ -81,6 +81,7 @@ class AutoEncoderModel(ADModel):
     def fit(
         self,
         X_train: DataSet,
+        training_features : list,
     ):
         """Fit the model to the training dataset
 
@@ -89,7 +90,7 @@ class AutoEncoderModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        train = X_train.get_training_dataset()
+        train = X_train[training_features]
         history = self.AD_model.fit(
             train.to_numpy(),
             train.to_numpy(),
@@ -120,12 +121,19 @@ class AutoEncoderModel(ADModel):
             float: model prediction
         """
         model_outputs = self.AD_model.predict(test)
-        ad_scores = tf.keras.losses.mae(model_outputs, test)
+        ad_scores = tf.keras.losses.mse(model_outputs, test)
         ad_scores = ad_scores._numpy()
+        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores
         else:
             return model_outputs
+        
+    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+        return None
+    
+    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+        return None
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

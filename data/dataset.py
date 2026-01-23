@@ -72,7 +72,7 @@ class DataSet:
         self.jet_feature_list = ['L1T_JetPuppiAK4_PT','L1T_JetPuppiAK4_Eta','L1T_JetPuppiAK4_Phi']
         self.object_feature_list = ['L1T_MuonTight_PT','L1T_MuonTight_Eta','L1T_MuonTight_Phi',
                                     'L1T_Electron_PT','L1T_Electron_Eta','L1T_Electron_Phi']
-        self.met_feature_list = ['L1T_PUPPIMET_MET','L1T_PUPPIMET_Phi','L1T_PUPPIMET_Eta']
+        self.met_feature_list = ['L1T_PUPPIMET_MET','L1T_PUPPIMET_Eta','L1T_PUPPIMET_Phi']
         self.bonus_columns = ['L1T_PFCand_PT','L1T_PUPPIPart_PT']
         self.gen_feature_list = ['FullReco_GenMissingET_MET']
         self.multiplicity_feature_list = ['jet_multiplicity','muon_multiplicity','electron_multiplicity']

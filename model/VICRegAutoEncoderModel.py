@@ -61,16 +61,39 @@ class PerObjectMaskingLayer(keras.layers.Layer):
         inputs = inputs * mask
         inputs = tf.reshape(inputs,input_shape)
         return inputs
+    
+class PhiRotationLayer(keras.layers.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def call(self, inputs):
+        input_copy = inputs
+        total_object = int(inputs.shape[0] / 3)
+        phi_columns = tf.constant([[int(i*3+2)] for i in range(total_object)])
+        pt_columns = tf.constant([[int(i*3)] for i in range(total_object)])
+        phi = tf.gather(input_copy,indices=phi_columns)
+        pt = tf.gather(input_copy,indices=pt_columns)
+        non_zeros =  tf.cast(pt != 0, tf.float32)
+        rot_angle = tf.random.uniform(tf.shape(phi)) *2*np.pi
+        rot_angle = rot_angle - np.pi
+        phi  = phi + rot_angle * non_zeros
+        phi = tf.where(phi > np.pi, phi - 2*np.pi, phi)
+        phi = tf.where(phi < -np.pi, phi + 2*np.pi, phi)
+        indices = tf.expand_dims(phi_columns, axis=1)  # shape [N, 1]
+        inputs = tf.tensor_scatter_nd_update(input_copy, indices, phi)
+        inputs = tf.reshape(inputs,inputs.shape)
+        return inputs
 
 class VICRegPreprocessing(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
         self.augment = tf.keras.Sequential([
             PerObjectMaskingLayer(0.2),
+            #PhiRotationLayer(),
         ])
         
     def call(self, x):
-        return self.augment(x), self.augment(x)
+        return x, self.augment(x)
 
 def off_diagonal(x):
     n = tf.shape(x)[0]
@@ -353,8 +376,10 @@ class VICRegModel(ADModel):
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
         x_logit = self.vae_model.decode(z)
-        ad_scores = tf.keras.losses.mse(x_logit,x_latent)
+        ad_scores = tf.keras.losses.mae(x_logit,x_latent)
         ad_scores = ad_scores._numpy()
+        #ad_scores = mu2
+        
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores

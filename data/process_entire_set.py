@@ -11,11 +11,11 @@ from data.dataset import DataSet
 # }
 
 SELECTED = {
-    # "DY": "DY to ll",
+    "DY": "DY to ll",
     "QCD": "QCD inclusive",
     "QCDbb": "QCD bb",
     "Minbias": "Minbias / Soft QCD",
-    # "TTallh" : "tt all-hadr",
+    "TTallh" : "tt all-hadr",
     "HH4b"  : "HH 4b",
     # "TTsemil" : "tt semi-lept",
     # "TTalll" : "tt all-lept",
@@ -112,3 +112,12 @@ for class_name in CLASS_NAMES:
     data_set.pretty_name = PRETTY[class_name]
     data_set.save_h5('dataset/'+class_name)
     data_set.plot_inputs('dataset/'+class_name)
+    
+    data_set_augment = DataSet.fromHF(PROCESS_TO_FOLDER[PRETTY[class_name]])
+    data_set_augment.pretty_name = PRETTY[class_name]
+    data_set_augment.drop_a_soft_one('jet')
+    data_set_augment.eta_smear()
+    data_set_augment.pt_smear()
+    data_set_augment.phi_smear()
+    data_set_augment.save_h5('dataset/'+class_name+'_augmented')
+    data_set_augment.plot_inputs('dataset/'+class_name+'_augmented')

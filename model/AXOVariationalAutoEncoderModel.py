@@ -251,6 +251,7 @@ class AXOVariationalAutoEncoderModel(ADModel):
         mu2 = np.linalg.vector_norm(mean,axis=1)
         ad_scores = tf.keras.losses.mse(x_hat, test)
         ad_scores = ad_scores._numpy()
+        #ad_scores = mu2
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores

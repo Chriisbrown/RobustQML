@@ -12,8 +12,7 @@ def train(model):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
     
-    labels = {"QCD": 0,"QCDbb": 1}
-    #labels = {"QCD": 2}
+    labels = {"QCD": 0, 'QCDbb':1, 'DY':5}
     dataset_list = []
     for datasets in labels.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
@@ -23,6 +22,7 @@ def train(model):
         training_columns = data_test.training_columns
         
     full_data_frame = pd.concat([dataset.data_frame for dataset in dataset_list])
+    full_data_frame = full_data_frame.sample(frac=1)
     
     input_shape = len(training_columns)
     model.build_model(input_shape)

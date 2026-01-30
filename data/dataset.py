@@ -52,6 +52,11 @@ def process_objects(array,feature_list):
             array[feature] = (padded[j])
     return array
 
+def remove_feature(array,feature_list):    
+    for feature in feature_list:
+        array[feature] = 0
+    return array
+
 
 def normalise(array, columns):
     for column in columns:
@@ -124,7 +129,8 @@ class DataSet:
         dataset = dataset.map(add_multiplicities,remove_columns=self.bonus_columns)
         dataset = dataset.map(pad_jets,fn_kwargs = {'jet_feature_list' : self.jet_feature_list,'max_number_of_jets' :self.max_number_of_jets},remove_columns=self.jet_feature_list)
         dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.object_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.object_feature_list)        
-        dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list})   
+        dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list})  
+        dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']})   
         return dataset
 
     def load_data_from_HF(self, filepath: str, max_number_of_events : int = 2000):
@@ -146,6 +152,8 @@ class DataSet:
         dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.object_feature_list,'max_number_of_objects' : self.max_number_of_objects}, num_proc=proc_num,remove_columns=self.object_feature_list)        
         print("Process other columns")
         dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list}, num_proc=proc_num)   
+        print("Remove MET Eta")
+        dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']})   
         
         self.data_frame = dataset['train'].to_pandas()
         print(self.data_frame.describe())
@@ -292,10 +300,200 @@ class DataSet:
         
         
     def phi_rotate(self):
+        # Get the phi features
         phi_columns = []
         for column in self.training_columns:
-            if "phi" in column:
+            if "Phi" in column:
                 phi_columns.append(column)
-        self.data_frame[phi_columns] = self.data_frame[phi_columns]
+        # Get the pT features, only do the phi rotation if the object has non zero pT
+        phi= self.data_frame[phi_columns].to_numpy()
         
         
+        pt_columns = []
+        for column in self.training_columns:
+            if (("PT" in column) or (column == "L1T_PUPPIMET_MET")):
+                pt_columns.append(column)
+
+        pt = self.data_frame[pt_columns].to_numpy()
+        
+        non_zeros = pt != 0
+        
+        rot_angle = np.random.rand(len(phi)) *2*np.pi
+        rot_angle = rot_angle - np.pi
+        
+        ones  = np.ones_like(phi)
+        angle_matrix = np.einsum('ij,i->ij', ones, rot_angle)
+        angle_matrix = angle_matrix * non_zeros
+        phi = phi[:, :]+angle_matrix
+        
+        phi = np.where(phi > np.pi, phi - 2*np.pi, phi)
+        phi = np.where(phi < -np.pi, phi+2*np.pi, phi)
+        
+        self.data_frame[phi_columns] = phi
+        
+        
+    def phi_smear(self,scale=0.01):
+        # Get the phi features
+        phi_columns = []
+        for column in self.training_columns:
+            if "Phi" in column:
+                if column != 'L1T_PUPPIMET_Phi':
+                    phi_columns.append(column)
+        # Get the pT features, only do the phi rotation if the object has non zero pT
+        phi= self.data_frame[phi_columns].to_numpy()
+        
+        
+        pt_columns = []
+        for column in self.training_columns:
+            if (("PT" in column)):
+                pt_columns.append(column)
+
+        pt = self.data_frame[pt_columns].to_numpy()
+        
+        non_zeros = pt != 0
+        rot_angle = np.random.uniform(-1, 1, (phi.shape))*scale*2*np.pi
+        
+        event_phi_change = np.sum(rot_angle,axis=1)
+        
+        angle_matrix = rot_angle * non_zeros
+        
+        phi = phi[:, :]+angle_matrix
+        
+
+        phi = np.where(phi>np.pi, phi - 2*np.pi, phi)
+        phi = np.where(phi<-np.pi, phi+2*np.pi, phi)
+        
+        
+        self.data_frame[phi_columns] = phi
+        
+        self.data_frame['L1T_PUPPIMET_Phi'] = self.data_frame['L1T_PUPPIMET_Phi'] + event_phi_change
+        self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']>np.pi, self.data_frame['L1T_PUPPIMET_Phi'] - 2*np.pi, self.data_frame['L1T_PUPPIMET_Phi'])        
+        self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']<-np.pi, self.data_frame['L1T_PUPPIMET_Phi']+2*np.pi, self.data_frame['L1T_PUPPIMET_Phi'])
+        
+        
+    def pt_smear(self,scale=0.01):
+        # Get the phi features
+        pt_columns = []
+        for column in self.training_columns:
+            if "PT" in column:
+                pt_columns.append(column)
+        # Get the pT features, only do the phi rotation if the object has non zero pT
+        pt= self.data_frame[pt_columns].to_numpy()
+
+        
+        non_zeros = pt != 0
+
+        pt_smear = np.random.uniform(-1, 1, (pt.shape))*scale
+        
+        event_pt_smear = np.sum(pt_smear,axis=1)
+        
+        pt_matrix = pt_smear * non_zeros
+        
+        pt = pt[:, :]+pt_matrix
+        
+
+        pt = np.where(pt<0, 0 , pt)
+        pt = np.where(pt>2000, 2000, pt)
+    
+        
+        self.data_frame[pt_columns] = pt
+        
+        self.data_frame['L1T_PUPPIMET_MET'] = self.data_frame['L1T_PUPPIMET_MET'] + event_pt_smear
+        self.data_frame['L1T_PUPPIMET_MET'] = np.where(self.data_frame['L1T_PUPPIMET_MET']>2000, 2000, self.data_frame['L1T_PUPPIMET_MET'])        
+        self.data_frame['L1T_PUPPIMET_MET'] = np.where(self.data_frame['L1T_PUPPIMET_MET']<0, 0, self.data_frame['L1T_PUPPIMET_MET'])
+        
+    def eta_smear(self,scale=0.01):
+        # Get the phi features
+        eta_columns = []
+        
+        eta_jet_columns = []
+        eta_object_columns = []
+              
+        for column in self.training_columns:
+            if "Phi" in column:
+                if column != 'L1T_PUPPIMET_Phi':
+                    eta_columns.append(column)
+                if "Jet" in column:
+                    eta_jet_columns.append(column)
+                if "Electron" or "Muon" in column:
+                    eta_object_columns.append(column)
+        # Get the pT features, only do the phi rotation if the object has non zero pT
+        eta= self.data_frame[eta_columns].to_numpy()
+        
+        
+        pt_columns = []
+        for column in self.training_columns:
+            if (("PT" in column)):
+                pt_columns.append(column)
+
+        pt = self.data_frame[pt_columns].to_numpy()
+        
+        non_zeros = pt != 0
+        eta_smear = np.random.uniform(-1, 1, (eta.shape))*scale
+                
+        eta_matrix = eta_smear * non_zeros
+        
+        eta = eta[:, :]+eta_matrix
+        
+        self.data_frame[eta_columns] = eta
+        
+        self.data_frame[eta_jet_columns] = np.where(self.data_frame[eta_jet_columns]>4.5, 4.5, self.data_frame[eta_jet_columns])        
+        self.data_frame[eta_jet_columns] = np.where(self.data_frame[eta_jet_columns]<-4.5, -4.5, self.data_frame[eta_jet_columns])
+        
+        self.data_frame[eta_object_columns] = np.where(self.data_frame[eta_object_columns]>2.4, 2.4, self.data_frame[eta_object_columns])        
+        self.data_frame[eta_object_columns] = np.where(self.data_frame[eta_object_columns]<-2.4, -2.4, self.data_frame[eta_object_columns])
+
+    def eta_flip(self):
+        # Get the phi features
+        eta_columns = []
+        for column in self.training_columns:
+            if "Eta" in column:
+                eta_columns.append(column)
+        # Get the pT features, only do the phi rotation if the object has non zero pT
+        self.data_frame[eta_columns] = self.data_frame[eta_columns]*-1
+        
+        
+    def drop_a_soft_one(self,object_type):
+        
+        match object_type:
+            case 'jet':
+                pt_column = 'L1T_JetPuppiAK4_PT'
+                phi_column = 'L1T_JetPuppiAK4_Phi'
+            case 'e':
+                pt_column = 'L1T_Electron_PT'
+                phi_column = 'L1T_Electron_Phi'
+            case 'mu':
+                pt_column = 'L1T_MuonTight_PT'
+                phi_column = 'L1T_MuonTight_Eta'
+                
+        pt_columns = []
+        for column in self.training_columns:
+            if (("PT" in column) and ("Jet" in column)):
+                pt_columns.append(column)
+        
+        pt = self.data_frame[pt_columns].to_numpy()
+        
+        for i,event in enumerate(pt):
+            event = np.trim_zeros(event)
+            if len(event) > 0:
+                delta_pt = self.data_frame[pt_column+str(np.argmin(event))][i]
+                delta_phi = self.data_frame[phi_column+str(np.argmin(event))][i]
+                
+                et = self.data_frame['L1T_PUPPIMET_MET'][i]
+                phi = self.data_frame['L1T_PUPPIMET_Phi'][i]
+                            
+                sumpx = np.sqrt(et**2 / (1 + np.tan(phi)**2))
+                sumpy = np.tan(phi) * sumpx
+
+                deltapx = delta_pt * np.cos(delta_phi);
+                deltapy = delta_pt * np.sin(delta_phi);
+            
+                newet = np.sqrt((sumpx - deltapx)**2 + (sumpy - deltapy)**2)
+                etphi = np.arctan2(sumpy - deltapx, sumpx - deltapy)
+                
+                self.data_frame.loc[i, 'L1T_PUPPIMET_MET'] = newet
+                self.data_frame.loc[i, 'L1T_PUPPIMET_Phi'] = etphi
+                
+                self.data_frame.loc[i, pt_column+str(np.argmin(event))] = 0
+                self.data_frame.loc[i, phi_column+str(np.argmin(event))] = 0
+                

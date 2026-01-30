@@ -136,8 +136,8 @@ if __name__ == "__main__":
     plt.close() 
     
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    for sample_name in output_dict.keys():
-        ax.plot(minbias_rates,output_dict[sample_name]['efficiencies'], label=sample_name, linewidth=style.LINEWIDTH)
+    for i,sample_name in enumerate(output_dict.keys()):
+        ax.plot(minbias_rates,output_dict[sample_name]['efficiencies'], label=sample_name, linewidth=style.LINEWIDTH,color = style.colours[i])
     ax.grid(True)
     ax.set_ylabel('Signal Efficiency')
     ax.set_xlabel('Background Rate')

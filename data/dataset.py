@@ -60,8 +60,8 @@ def remove_feature(array,feature_list):
 
 def normalise(array, columns):
     for column in columns:
-            array[column]=(array[column]-array[column].mean())/array[column].std()
-            array[column] = array[column].fillna(0)
+        array[column]=(array[column]-array[column].mean())/array[column].std()
+        array[column] = array[column].fillna(0)
 
 class DataSet:
     def __init__(self, name, orig=None):
@@ -87,7 +87,7 @@ class DataSet:
         self.all_features = self.met_feature_list + self.gen_feature_list+ self.multiplicity_feature_list + top_x_jets + top_x_objects
         
         self.training_columns =  top_x_jets + top_x_objects + self.met_feature_list
-        
+        self.non_met_columns = [column for column in self.training_columns if "PT" in column ]
         self.random_state = 4
         self.verbose = 1
         
@@ -130,7 +130,7 @@ class DataSet:
         dataset = dataset.map(pad_jets,fn_kwargs = {'jet_feature_list' : self.jet_feature_list,'max_number_of_jets' :self.max_number_of_jets},remove_columns=self.jet_feature_list)
         dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.object_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.object_feature_list)        
         dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list})  
-        dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']})   
+        dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']}) 
         return dataset
 
     def load_data_from_HF(self, filepath: str, max_number_of_events : int = 2000):
@@ -154,8 +154,12 @@ class DataSet:
         dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list}, num_proc=proc_num)   
         print("Remove MET Eta")
         dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']})   
+        print("Remove 0 arrays")
         
         self.data_frame = dataset['train'].to_pandas()
+        self.data_frame = self.data_frame[self.data_frame[self.non_met_columns].sum(axis=1) != 0]
+        self.data_frame.reset_index(inplace=True)
+        
         print(self.data_frame.describe())
         
         self.config_dict["HFLoaded"] = datetime.datetime.now().strftime(
@@ -479,21 +483,23 @@ class DataSet:
                 delta_pt = self.data_frame[pt_column+str(np.argmin(event))][i]
                 delta_phi = self.data_frame[phi_column+str(np.argmin(event))][i]
                 
-                et = self.data_frame['L1T_PUPPIMET_MET'][i]
-                phi = self.data_frame['L1T_PUPPIMET_Phi'][i]
-                            
-                sumpx = np.sqrt(et**2 / (1 + np.tan(phi)**2))
-                sumpy = np.tan(phi) * sumpx
+                if delta_pt < 10:
+                
+                    et = self.data_frame['L1T_PUPPIMET_MET'][i]
+                    phi = self.data_frame['L1T_PUPPIMET_Phi'][i]
+                                
+                    sumpx = np.sqrt(et**2 / (1 + np.tan(phi)**2))
+                    sumpy = np.tan(phi) * sumpx
 
-                deltapx = delta_pt * np.cos(delta_phi);
-                deltapy = delta_pt * np.sin(delta_phi);
-            
-                newet = np.sqrt((sumpx - deltapx)**2 + (sumpy - deltapy)**2)
-                etphi = np.arctan2(sumpy - deltapx, sumpx - deltapy)
+                    deltapx = delta_pt * np.cos(delta_phi);
+                    deltapy = delta_pt * np.sin(delta_phi);
                 
-                self.data_frame.loc[i, 'L1T_PUPPIMET_MET'] = newet
-                self.data_frame.loc[i, 'L1T_PUPPIMET_Phi'] = etphi
-                
-                self.data_frame.loc[i, pt_column+str(np.argmin(event))] = 0
-                self.data_frame.loc[i, phi_column+str(np.argmin(event))] = 0
+                    newet = np.sqrt((sumpx - deltapx)**2 + (sumpy - deltapy)**2)
+                    etphi = np.arctan2(sumpy - deltapx, sumpx - deltapy)
+                    
+                    self.data_frame.loc[i, 'L1T_PUPPIMET_MET'] = newet
+                    self.data_frame.loc[i, 'L1T_PUPPIMET_Phi'] = etphi
+                    
+                    self.data_frame.loc[i, pt_column+str(np.argmin(event))] = 0
+                    self.data_frame.loc[i, phi_column+str(np.argmin(event))] = 0
                 

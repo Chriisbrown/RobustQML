@@ -32,17 +32,20 @@ if __name__ == "__main__":
     os.makedirs(plot_dir, exist_ok=True)
     
     minbias = DataSet.fromH5('dataset/Minbias')
-    minbias.normalise()
-    minbias_outputs = model.predict(minbias)
-        
+    #minbias.normalise()
+    minbias_test = minbias.data_frame.sample(frac=0.001)
+    minbias_outputs = model.predict(minbias_test,minbias.training_columns)
+    print(minbias_outputs)
     minbias_rates = rates(type(model).__name__,'minbias',minbias_outputs)
     
     output_dict = {"Minbias" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
     
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
-        data_test.normalise()
-        model_outputs = model.predict(data_test)
+        test = data_test.data_frame.sample(frac=0.001)
+        #data_test.normalise()
+        model_outputs = model.predict(test,data_test.training_columns)
+        print(model_outputs)
         efficiency_out = efficiency(type(model).__name__,datasets,model_outputs)
         output_dict[datasets] = {'predictions' : model_outputs,'efficiencies' : efficiency_out,'dataset':data_test}
         
@@ -155,13 +158,14 @@ if __name__ == "__main__":
     dataset_list = []
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
-        data_test.normalise()
+        #data_test.normalise()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
         
     full_data_frame = pd.concat([dataset.data_frame.sample(n=5000) for dataset in dataset_list])
-    combined_predictions = model.predict(full_data_frame[data_test.training_columns])
-    full_data_frame = full_data_frame.sample(frac=1)
+    full_data_frame = full_data_frame.sample(frac=0.001)
+    combined_predictions = model.predict(full_data_frame[data_test.training_columns],data_test.training_columns)
+    
 
     
     plot_2d(full_data_frame['jet_multiplicity'], combined_predictions, (0,10), (0,1), 'jet multiplicity', 'model predictions', 'jet multiplicity dependence')
@@ -182,5 +186,5 @@ if __name__ == "__main__":
     plt.close() 
     
     
-    distances = model.distance(full_data_frame[dataset_list[0].training_columns].iloc[0:25000])
+    distances = model.distance(full_data_frame[dataset_list[0].training_columns].iloc[0:250],training_columns)
     clusters(distances,labels=np.array(full_data_frame['event_label']),plot_dir=plot_dir, label_to_names={v: k for k, v in labels.items()})

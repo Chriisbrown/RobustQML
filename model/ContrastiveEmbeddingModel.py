@@ -110,6 +110,44 @@ def supervised_SimCLR_contrastive_loss(zs, labels, temperature=0.07,**kwargs):
         return tf.reduce_mean(loss)
     
     
+def SimCLRLoss(zs, labels, temperature=0.07,**kwargs):
+        # def SimCLRLoss(features, labels, temperature = 0.07):
+        '''
+        Computes SimCLRLoss as defined in https://arxiv.org/pdf/2004.11362.pdf
+        '''
+
+        # Generates mask indicating what samples are considered pos/neg
+        labels = tf.reshape(labels, [-1, 1])
+        positive_mask = tf.equal(labels, tf.transpose(labels))
+        negative_mask = tf.logical_not(positive_mask)
+        positive_mask = tf.cast(positive_mask, dtype=tf.float32)
+        negative_mask = tf.cast(negative_mask, dtype=tf.float32)
+
+        # Computes dp between pairs
+        contrast_feature = tf.concat(tf.unstack(zs, axis=1), axis=0)
+        logits = tf.matmul(zs, zs, transpose_b=True)
+        temperature = tf.cast(temperature, tf.float32)
+        logits = logits / temperature
+
+        # Subtract largest |logits| elt for numerical stability
+        # Simply for numerical precision -> stop gradient
+        max_logit = tf.reduce_max(tf.stop_gradient(logits), axis=1, keepdims=True)
+        logits = logits - max_logit
+
+        exp_logits = tf.exp(logits)
+        num_positives_per_row = tf.reduce_sum(positive_mask, axis=1)
+
+        denominator = tf.reduce_sum(exp_logits * negative_mask, axis = 1, keepdims=True)
+        denominator += tf.reduce_sum(exp_logits * positive_mask, axis = 1, keepdims=True)
+
+        # Compute L OUTSIDE -> defined in eq 2 of paper
+        log_probs = (logits - tf.math.log(denominator)) * positive_mask
+        log_probs = tf.reduce_sum(log_probs, axis=1)
+        log_probs = tf.math.divide_no_nan(log_probs, num_positives_per_row)
+        loss = -log_probs * temperature 
+        loss = tf.reduce_mean(loss)
+        return loss
+    
 def VICReg_contrastive_loss(zs,batch_size,num_features,sim_coeff=50,std_coeff=50,cov_coeff=1,**kwargs):
         repr_loss = keras.losses.mean_squared_error(zs[0],zs[1])
             
@@ -140,7 +178,7 @@ def choose_loss(choice: str):
     elif choice == "VICReg":
         return VICReg_contrastive_loss
     elif choice == "SupSimCLR":
-        return supervised_SimCLR_contrastive_loss
+        return SimCLRLoss
 
 
   
@@ -469,7 +507,7 @@ class ContrastiveEmbeddingModel(ADModel):
         x_logit = self.vae_model.decode(z)
         ad_scores = tf.keras.losses.mse(x_logit,x_latent)
         ad_scores = ad_scores._numpy()
-        #ad_scores = mu2
+        ad_scores = mu2
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores

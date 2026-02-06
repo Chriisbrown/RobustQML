@@ -12,11 +12,12 @@ def train(model):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
     
-    labels = {"QCD": 0, 'QCDbb':1, 'DY':5}
+    #labels = {"QCD": 0, 'QCDbb':1,'Minbias':2}
+    labels = {"QCD": 0}
     dataset_list = []
     for datasets in labels.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
-        data_test.normalise()
+        #data_test.normalise()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
         training_columns = data_test.training_columns

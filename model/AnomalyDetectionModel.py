@@ -82,8 +82,8 @@ class ADModel(ABC):
         # Plot history
         loss_history(plot_path, ['loss'], self.history)
         
-    def distance(self, test):
-        x_hat = self.predict(test, return_score=False)
+    def distance(self, test, training_columns=None):
+        x_hat = self.predict(test, training_columns, return_score=False)
         return pairwise_distances(test,x_hat)
 
     @abstractmethod

@@ -23,6 +23,14 @@ if __name__ == "__main__":
     parser.add_argument(
         '-o', '--output', default='output/autoencoder', help='Output model directory path, also save evaluation plots'
     )
+    
+    parser.add_argument(
+        '-n', '--normalise', default='True', help='Normalise the input data?'
+    )
+    
+    parser.add_argument(
+        '-e', '--events', default=-1, type=int,help='Number of the test set events to run over'
+    )
 
     args = parser.parse_args()
     
@@ -30,52 +38,58 @@ if __name__ == "__main__":
 
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
+      
+  
+    background = DataSet.fromH5('dataset/background_test')
+    training_columns = background.training_columns
+    if args.normalise == 'True':
+      background.normalise()
+    if args.events > 0:
+      background = background.data_frame.sample(n=args.events)
+    background_outputs = model.predict(background,training_columns)
     
-    minbias = DataSet.fromH5('dataset/Minbias')
-    minbias.normalise()
-    minbias_outputs = model.predict(minbias)
+    background_augment = DataSet.fromH5('dataset/background_augment_test')
+    if args.normalise == 'True':
+      background_augment.normalise()
+    if args.events > 0:
+      minbias_augment = background_augment.data_frame.sample(n=args.events)
+    background_augment_outputs = model.predict(background_augment,training_columns)
     
-    minbias_augment = DataSet.fromH5('dataset/Minbias_augmented')
-    # minbias_augment.drop_a_soft_one('jet')
-    # minbias_augment.eta_smear()
-    # minbias_augment.pt_smear()
-    # minbias_augment.phi_smear()
-    minbias_augment.normalise()
-    minbias_augment_outputs = model.predict(minbias_augment)
-    
-    HH4b_augment = DataSet.fromH5('dataset/HH4b_augmented')
-    # HH4b_augment.drop_a_soft_one('jet')
-    # HH4b_augment.eta_smear()
-    # HH4b_augment.pt_smear()
-    # HH4b_augment.phi_smear()
-    # HH4b_augment.normalise()
-    HH4b_augment_outputs = model.predict(HH4b_augment)
+    ato4l_augment = DataSet.fromH5('dataset/ato4l_augmented')
+    if args.normalise == 'True':
+      ato4l_augment.normalise()
+    if args.events > 0:
+      ato4l_augment = ato4l_augment.data_frame.sample(n=args.events)
+    ato4l_augment_outputs = model.predict(ato4l_augment,training_columns)
 
-    HH4b = DataSet.fromH5('dataset/HH4b')
-    HH4b.normalise()
-    HH4b_outputs = model.predict(HH4b)   
+    ato4l = DataSet.fromH5('dataset/ato4l')
+    if args.normalise == 'True':
+      ato4l.normalise()
+    if args.events > 0:
+      ato4l = ato4l.data_frame.sample(n=args.events)
+    ato4l_outputs = model.predict(ato4l,training_columns)   
     
-    target_background = np.zeros(minbias_outputs.shape[0])
+    target_background = np.zeros(background_outputs.shape[0])
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
 
-    trueVal = np.concatenate((np.ones(HH4b_augment_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
-    predVal_loss = np.concatenate((HH4b_augment_outputs, minbias_augment_outputs))
+    trueVal = np.concatenate((np.ones(ato4l_augment_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
+    predVal_loss = np.concatenate((ato4l_augment_outputs, background_augment_outputs))
 
     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
     auc_loss = auc(fpr_loss, tpr_loss)
                 
-    plt.plot(fpr_loss, tpr_loss, "-", label='hh4b augment'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[0])
+    plt.plot(fpr_loss, tpr_loss, "-", label='ato4l augment'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[0])
     
     
-    trueVal = np.concatenate((np.ones(HH4b_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
-    predVal_loss = np.concatenate((HH4b_outputs, minbias_outputs))
+    trueVal = np.concatenate((np.ones(ato4l_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
+    predVal_loss = np.concatenate((ato4l_outputs, backgrouns_outputs))
 
     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
     auc_loss = auc(fpr_loss, tpr_loss)
                 
-    plt.plot(fpr_loss, tpr_loss, "-", label='hh4b'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[1])
+    plt.plot(fpr_loss, tpr_loss, "-", label='ato4l'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[1])
             
     ax.semilogx()
     ax.semilogy()
@@ -87,20 +101,17 @@ if __name__ == "__main__":
     ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
     save_path = os.path.join(plot_dir, "output_ROC_augment")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     plt.close() 
     
+    efficiency_out = efficiency(type(model).__name__,'ato4l',ato4l_outputs)        
+    minbias_rates = rates(type(model).__name__,'background',background_outputs)
     
-    
-    efficiency_out = efficiency(type(model).__name__,'HHbb',HH4b_outputs)        
-    minbias_rates = rates(type(model).__name__,'minbias',minbias_outputs)
-    
-    augment_efficiency_out = efficiency(type(model).__name__,'HHbb_augmented',HH4b_augment_outputs)        
-    augment_minbias_rates = rates(type(model).__name__,'minbias_augmented',minbias_augment_outputs)
+    augment_efficiency_out = efficiency(type(model).__name__,'ato4l_augmented',ato4l_augment_outputs)        
+    augment_minbias_rates = rates(type(model).__name__,'background_augmented',background_augment_outputs)
     
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    ax.plot(minbias_rates,efficiency_out, label='HHbbbb', linewidth=style.LINEWIDTH,color=style.colours[0])
-    ax.plot(augment_minbias_rates,augment_efficiency_out, label='HHbbbb augmented', linewidth=style.LINEWIDTH,color=style.colours[1])
+    ax.plot(minbias_rates,efficiency_out, label='ato4l', linewidth=style.LINEWIDTH,color=style.colours[0])
+    ax.plot(augment_minbias_rates,augment_efficiency_out, label='ato4l augmented', linewidth=style.LINEWIDTH,color=style.colours[1])
     
     ax.grid(True)
     ax.set_ylabel('Signal Efficiency')
@@ -113,7 +124,20 @@ if __name__ == "__main__":
 
     save_path = os.path.join(plot_dir, "trigger_roc_augmented")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
+    
+    
+    plot_histo([background_outputs,background_augment_outputs,ato4l_outputs,ato4l_augment_outputs], 
+               ['background','Augmented background','ato4l','Augmented ato4l'], 
+               '', 
+               'AnomalyScore', 
+               'a.u.', 
+               log = 'linear', 
+               x_range=(0, 1), 
+               bins = 50)
+    
+    save_path = os.path.join(plot_dir, "augmented_output_scores")
+    plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    plt.close() 
     
         
     

@@ -353,12 +353,12 @@ class VICRegModel(ADModel):
         callbacks.on_train_end(logs=logs) 
 
                 
-    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+    def predict(self, X_test, training_columns,return_score = True) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         """Predict method for model
@@ -376,7 +376,7 @@ class VICRegModel(ADModel):
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
         x_logit = self.vae_model.decode(z)
-        ad_scores = tf.keras.losses.mae(x_logit,x_latent)
+        ad_scores = tf.keras.losses.mse(x_logit,x_latent)
         ad_scores = ad_scores._numpy()
         #ad_scores = mu2
         
@@ -386,29 +386,29 @@ class VICRegModel(ADModel):
         else:
             return x_logit
         
-    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def encoder_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         x_latent = self.vicreg_model.backbone(test)
         return x_latent
     
-    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def var_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         x_latent = self.vicreg_model.backbone(test)
         mean, logvar = self.vae_model.encode(x_latent)
         return mean, logvar
         
-    def distance(self, test):
-        x_hat = self.predict(test, return_score=False)
+    def distance(self, test, training_columns):
+        x_hat = self.predict(test, training_columns,return_score=False)
         x_latent = self.vicreg_model.backbone(test)
         return pairwise_distances(x_latent,x_hat)
 

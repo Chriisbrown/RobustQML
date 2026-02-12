@@ -6,18 +6,24 @@ import numpy as np
 import pandas as pd
 # Import from other modules
 from model.common import fromYaml
-from data.dataset import DataSet
+from data.ADdataset import DataSet
 
-def train(model):
+def train(model ,normalise):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
     
-    #labels = {"QCD": 0, 'QCDbb':1,'Minbias':2}
-    labels = {"QCD": 0}
+    #labels = {"QCD": 0, 'QCDbb':1}
+    labels = {"background_train": 0}
     dataset_list = []
     for datasets in labels.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
-        #data_test.normalise()
+        if normalise == "True":
+            data_test.normalise()
+        else:
+            data_test.max_number_of_jets = 5
+            data_test.max_number_of_objects = 2
+            data_test.max_number_of_objects = 2
+            data_test.generate_feature_lists()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
         training_columns = data_test.training_columns
@@ -26,6 +32,7 @@ def train(model):
     full_data_frame = full_data_frame.sample(frac=1)
     
     input_shape = len(training_columns)
+    print(training_columns)
     model.build_model(input_shape)
     model.compile_model()
     model.fit(full_data_frame,training_columns)
@@ -45,8 +52,11 @@ if __name__ == "__main__":
     parser.add_argument(
         '-y', '--yaml_config', default='model/configs/AutoEncoder.yaml', help='YAML config for model'
     )
+    
+    parser.add_argument(
+        '-n', '--normalise', default='True', help='Normalise the input data?'
+    )
 
     args = parser.parse_args()
-
     model = fromYaml(args.yaml_config,args.output)
-    train(model)
+    train(model, args.normalise)

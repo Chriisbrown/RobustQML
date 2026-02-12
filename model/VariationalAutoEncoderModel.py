@@ -240,12 +240,12 @@ class VariationalAutoEncoderModel(ADModel):
             callbacks.on_epoch_end(epoch, logs=logs)
         callbacks.on_train_end(logs=logs) 
 
-    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+    def predict(self, X_test, training_columns, return_score = True) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         """Predict method for model
@@ -272,21 +272,21 @@ class VariationalAutoEncoderModel(ADModel):
         else:
             return x_logit
         
-    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def encoder_predict(self,X_test, training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         latent = self.AD_model.encoder(test)
         return latent
     
-    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def var_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         mean, logvar = self.AD_model.encode(test)

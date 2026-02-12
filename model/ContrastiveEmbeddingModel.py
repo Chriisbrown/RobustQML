@@ -482,12 +482,12 @@ class ContrastiveEmbeddingModel(ADModel):
         callbacks.on_train_end(logs=logs) 
 
                 
-    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+    def predict(self, X_test, training_columns,return_score = True) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         """Predict method for model
@@ -514,27 +514,27 @@ class ContrastiveEmbeddingModel(ADModel):
         else:
             return x_logit
 
-    def distance(self, test):
-        x_hat = self.predict(test, return_score=False)
+    def distance(self, test, training_columns):
+        x_hat = self.predict(test,training_columns, return_score=False)
         x_latent = self.contrastive_model.backbone(test)
         return pairwise_distances(x_latent,x_hat)
     
     
-    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def encoder_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         latent = self.contrastive_model.backbone(test)
         return latent
     
-    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def var_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         x_latent = self.contrastive_model.backbone(test)

@@ -87,16 +87,16 @@ class ADModel(ABC):
         return pairwise_distances(test,x_hat)
 
     @abstractmethod
-    def predict(self, X_test, **kwargs):
+    def predict(self, X_test,training_columns, **kwargs):
         """
         Fit the model to the training data
         Must be written for child class
         """
         
-    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def var_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         return None
     
-    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
+    def encoder_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         return None
 
     def save_decorator(save_func):

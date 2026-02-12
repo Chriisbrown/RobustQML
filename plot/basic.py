@@ -66,7 +66,6 @@ def error_residual(model_outputs,plot_dir):
             )
     save_path = os.path.join(plot_dir, "error_residual")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     plt.close()    
     
 def loss_history(plot_dir, loss_names, history):
@@ -84,7 +83,6 @@ def loss_history(plot_dir, loss_names, history):
 
         save_path = os.path.join(plot_dir, "loss_" + metric + "_history")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
 
         fig.clf()
         
@@ -104,7 +102,6 @@ def rates(model_name,sample_name,rates_outputs,plot_dir=None):
 
         save_path = os.path.join(plot_dir, "rate")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
 
     return 1 - np.cumsum(hist)/100
 
@@ -124,7 +121,6 @@ def efficiency(model_name,sample_name,efficiencies_outputs,plot_dir=None):
 
         save_path = os.path.join(plot_dir, sample_name+"_efficiency")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     
     return 1-np.cumsum(hist)/100
 
@@ -145,7 +141,6 @@ def clusters(distances,labels,plot_dir=None,label_to_names={}):
     plt.legend()
     save_path = os.path.join(plot_dir, "clusters")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     
     
     

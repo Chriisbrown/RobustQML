@@ -11,8 +11,8 @@ model_config :
   latent_dim: 8
 
 training_config :
-  epochs : 100
-  batch_size : 256
+  epochs : 40
+  batch_size : 2560
   learning_rate : 0.001
   validation_split : 0.1
 

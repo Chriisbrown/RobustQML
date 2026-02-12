@@ -7,61 +7,16 @@ import time
 import datetime
 from pathlib import Path
 import json
-import dask.dataframe as dd
 import os
 from plot.basic import plot_histo
 import matplotlib.pyplot as plt
 import multiprocessing
 import math
+import h5py
+
 
 from sklearn.preprocessing import MinMaxScaler
 
-
-def add_multiplicities(array):        
-    array['jet_multiplicity'] = ak.count_nonzero(array['L1T_JetPuppiAK4_PT'])
-    array['muon_multiplicity'] = ak.count_nonzero(array['L1T_MuonTight_PT'])
-    array['electron_multiplicity'] = ak.count_nonzero(array['L1T_Electron_PT'])
-    # array['pfcand_multiplicity'] = ak.count_nonzero(array['L1T_PFCand_PT'])
-    # array['puppicand_multiplicity'] = ak.count_nonzero(array['L1T_PUPPIPart_PT'])
-    return array
-
-def pad_jets(array,jet_feature_list,max_number_of_jets):
-    for jet_feature in jet_feature_list:
-        padded_jets = ak.pad_none(array[jet_feature],max_number_of_jets,axis=0,clip=True)
-        padded_jets = ak.fill_none(padded_jets, 0)
-        padded_jets = ak.values_astype(padded_jets, np.float64)
-        for j in range(max_number_of_jets):
-            array[jet_feature+str(j)] = (padded_jets[j])
-    return array
-
-def pad_objects(array,object_feature_list,max_number_of_objects):    
-    for object_feature in object_feature_list:
-        padded_objects = ak.pad_none(array[object_feature],max_number_of_objects,axis=0,clip=True)
-        padded_objects = ak.fill_none(padded_objects, 0)
-        padded_objects = ak.values_astype(padded_objects, np.float64)
-        for j in range(max_number_of_objects):
-            array[object_feature+str(j)] = (padded_objects[j])
-    return array
-
-def process_objects(array,feature_list):    
-    for feature in feature_list:
-        padded = ak.pad_none(array[feature],1,axis=0,clip=True)
-        padded = ak.fill_none(padded, 0)
-        padded = ak.values_astype(padded, np.float64)
-        for j in range(1):
-            array[feature] = (padded[j])
-    return array
-
-def remove_feature(array,feature_list):    
-    for feature in feature_list:
-        array[feature] = 0
-    return array
-
-
-def normalise(array, columns):
-    for column in columns:
-        array[column]=(array[column]-array[column].mean())/array[column].std()
-        array[column] = array[column].fillna(0)
 
 class DataSet:
     def __init__(self, name, orig=None):
@@ -72,31 +27,35 @@ class DataSet:
         
         self.max_number_of_jets = 10
         self.max_number_of_objects = 4
-        self.max_number_of_constituents = 20
         
-        self.jet_pt_cut = 10
-        self.electron_pt_cut = 2 
-        self.muon_pt_cut = 2
+        self.jet_pt_cut = 0
+        self.electron_pt_cut = 0
+        self.muon_pt_cut = 0
+
+            
+        self.generate_feature_lists()
+        self.random_state = 4
+        self.verbose = 1
+        
+        self.config_dict = {'name':self.name}
+        
+    def generate_feature_lists(self):
         
         self.jet_feature_list = ['L1T_JetPuppiAK4_PT','L1T_JetPuppiAK4_Eta','L1T_JetPuppiAK4_Phi']
         self.muon_feature_list = ['L1T_MuonTight_PT','L1T_MuonTight_Eta','L1T_MuonTight_Phi']
         self.electron_feature_list = ['L1T_Electron_PT','L1T_Electron_Eta','L1T_Electron_Phi']
         self.met_feature_list = ['L1T_PUPPIMET_MET','L1T_PUPPIMET_Eta','L1T_PUPPIMET_Phi']
         self.bonus_columns = ['L1T_PFCand_PT','L1T_PUPPIPart_PT']
-        self.gen_feature_list = ['FullReco_GenMissingET_MET']
         self.multiplicity_feature_list = ['jet_multiplicity','muon_multiplicity','electron_multiplicity']
         
-        top_x_jets = [feature + str(i) for feature in self.jet_feature_list for i in range(self.max_number_of_jets)]
-        top_x_muons = [feature + str(i) for feature in self.muon_feature_list for i in range(self.max_number_of_objects)]
-        top_x_electrons = [feature + str(i) for feature in self.electron_feature_list for i in range(self.max_number_of_objects)]
-        self.all_features = self.met_feature_list + self.gen_feature_list+ self.multiplicity_feature_list + top_x_jets + top_x_muons + top_x_electrons
+        top_x_jets = [feature + str(i) for i in range(self.max_number_of_jets) for feature in self.jet_feature_list]
+        top_x_muons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.muon_feature_list ]
+        top_x_electrons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.electron_feature_list ]
+        self.all_features = self.met_feature_list +  self.multiplicity_feature_list + top_x_jets + top_x_muons + top_x_electrons
         
-        self.training_columns =  top_x_jets + top_x_muons + top_x_electrons + self.met_feature_list
+        self.training_columns =   self.met_feature_list + top_x_electrons  + top_x_muons + top_x_jets 
         self.non_met_columns = [column for column in self.training_columns if "PT" in column ]
-        self.random_state = 4
-        self.verbose = 1
-        
-        self.config_dict = {'name':self.name}
+            
         
     def __add__(self, others : list ):
         frames = [other.data_frame for other in others]
@@ -108,97 +67,23 @@ class DataSet:
 
     def copy_constructor(self, orig):
         self.data_frame = orig.data_frame
-    
-    @classmethod
-    def fromHF(cls, filepath,max_number_of_events=-1):
-        hfclass = cls("From Hugging Face")
-        hfclass.load_data_from_HF(filepath=filepath,max_number_of_events=max_number_of_events)
-        return hfclass
-    
+
     @classmethod
     def fromH5(cls, filepath):
         h5class = cls("From H5")
         h5class.load_h5(filepath=filepath)
         return h5class
     
+    
+    @classmethod
+    def fromOrginalH5(cls, filepath, with_labels=False):
+        h5class = cls("From H5")
+        h5class.load_original_h5(filepath=filepath,with_labels=with_labels)
+        return h5class
+    
     def get_training_dataset(self):
         return self.data_frame[self.training_columns]
     
-    def stream_data_from_HF(self, filepath: str):
-        dataset = load_dataset("fastmachinelearning/collide-1m",
-                       data_dir=filepath,
-                       on_bad_files='warn',
-                       streaming=True,
-                       columns = self.met_feature_list + self.jet_feature_list + self.muon_feature_list + self.electron_feature_list + self.gen_feature_list + self.bonus_columns,
-        )
-        dataset = dataset.map(add_multiplicities,remove_columns=self.bonus_columns)
-        dataset = dataset.map(pad_jets,fn_kwargs = {'jet_feature_list' : self.jet_feature_list,'max_number_of_jets' :self.max_number_of_jets},remove_columns=self.jet_feature_list)
-        dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.muon_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.muon_feature_list)   
-        dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.electron_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.electron_feature_list)        
-        dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list})  
-        dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']}) 
-        return dataset
-
-    def load_data_from_HF(self, filepath: str, max_number_of_events : int = 2000):
-        starting_time = time.time()
-        proc_num = multiprocessing.cpu_count()
-
-        dataset = load_dataset("fastmachinelearning/collide-1m",
-                       data_dir=filepath,
-                       on_bad_files='warn',
-                       columns = self.met_feature_list + self.jet_feature_list + self.muon_feature_list + self.electron_feature_list + self.gen_feature_list + self.bonus_columns,
-                       num_proc = 16)
-        
-        print(f"cpu count: {proc_num}")
-        print("Add multiplicities")
-        dataset = dataset.map(add_multiplicities,num_proc=proc_num,remove_columns=self.bonus_columns)
-        print("Pad Jets")
-        dataset = dataset.map(pad_jets,fn_kwargs = {'jet_feature_list' : self.jet_feature_list,'max_number_of_jets' :self.max_number_of_jets}, num_proc=proc_num,remove_columns=self.jet_feature_list)
-        print("Pad Muons")
-        dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.muon_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.muon_feature_list)   
-        print("Pad Electrons")
-        dataset = dataset.map(pad_objects,fn_kwargs = {'object_feature_list' : self.electron_feature_list,'max_number_of_objects' : self.max_number_of_objects}, remove_columns=self.electron_feature_list)        
-        print("Process other columns")
-        dataset = dataset.map(process_objects,fn_kwargs = {'feature_list' : self.gen_feature_list + self.met_feature_list}, num_proc=proc_num)   
-        #print("Remove MET Eta")
-        #dataset = dataset.map(remove_feature,fn_kwargs = {'feature_list' :['L1T_PUPPIMET_Eta']})   
-        print("Remove 0 arrays")
-        
-        self.data_frame = dataset['train'].to_pandas()
-        
-        
-        print("Pt Cuts")
-        for i in range(self.max_number_of_jets):
-            mask = np.where((self.data_frame['L1T_JetPuppiAK4_PT'+str(i)] > self.jet_pt_cut),1,0)
-            self.data_frame['L1T_JetPuppiAK4_PT'+str(i)] =  self.data_frame['L1T_JetPuppiAK4_PT'+str(i)] * mask
-            self.data_frame['L1T_JetPuppiAK4_Eta'+str(i)] = self.data_frame['L1T_JetPuppiAK4_Eta'+str(i)] * mask
-            self.data_frame['L1T_JetPuppiAK4_Phi'+str(i)] = self.data_frame['L1T_JetPuppiAK4_Phi'+str(i)]  * mask
-            
-        for i in range(self.max_number_of_objects):
-            mask  = np.where((self.data_frame['L1T_MuonTight_PT'+str(i)] > self.muon_pt_cut),1,0)
-            self.data_frame['L1T_MuonTight_PT'+str(i)] =  self.data_frame['L1T_MuonTight_PT'+str(i)] * mask
-            self.data_frame['L1T_MuonTight_Eta'+str(i)] = self.data_frame['L1T_MuonTight_Eta'+str(i)] * mask
-            self.data_frame['L1T_MuonTight_Phi'+str(i)] = self.data_frame['L1T_MuonTight_Phi'+str(i)]  * mask
-            
-        for i in range(self.max_number_of_objects):
-            mask = np.where((self.data_frame['L1T_Electron_PT'+str(i)] > self.electron_pt_cut),1,0)
-            self.data_frame['L1T_Electron_PT'+str(i)] =  self.data_frame['L1T_Electron_PT'+str(i)] * mask
-            self.data_frame['L1T_Electron_Eta'+str(i)] = self.data_frame['L1T_Electron_Eta'+str(i)] * mask
-            self.data_frame['L1T_Electron_Phi'+str(i)] = self.data_frame['L1T_Electron_Phi'+str(i)]  * mask
-
-        print(self.data_frame.describe())
-        
-        self.data_frame = self.data_frame[self.data_frame[self.non_met_columns].sum(axis=1) != 0]
-        self.data_frame.reset_index(inplace=True)
-        
-        self.config_dict["HFLoaded"] = datetime.datetime.now().strftime(
-            "%H:%M %d/%m/%y")
-        self.config_dict["HFfilepath"] = filepath
-        self.config_dict["NumEvents"] = len(self.data_frame)
-        if self.verbose == 1:
-            print("Event Reading Complete, read: ",
-                  len(self.data_frame), " events in ", time.time() - starting_time, " seconds")
-
     def save_h5(self, filepath):
         Path(filepath).mkdir(parents=True, exist_ok=True)
 
@@ -220,6 +105,7 @@ class DataSet:
 
             store = pd.HDFStore(filepath+'/full_Dataset.h5')
             self.data_frame = store['df']
+            self.data_frame.reset_index(inplace=True)
             store.close()
         else:
             print("No Full dataset")
@@ -233,6 +119,24 @@ class DataSet:
             self.name = self.config_dict["name"]
         else:
             print("No Config Dict")
+            
+    def load_original_h5(self, filepath,with_labels = False):
+        my_file = Path(filepath+'.h5')
+        with h5py.File(my_file, 'r') as file:
+            full_data = file['Particles'][:,:,:-1]
+            p = np.random.permutation(len(full_data))
+            if with_labels:
+                labels = file['EvtId'][:]
+                labels = labels[p]
+            full_data = full_data[p]
+        columns = self.training_columns
+        flattened = np.reshape(full_data, (full_data.shape[0], full_data.shape[1]*full_data.shape[2]))
+        if with_labels:
+            columns.append('event_label')
+            flattened = np.c_[flattened,labels]
+        self.data_frame = pd.DataFrame(flattened, columns=columns)
+        self.data_frame.reset_index(inplace=True)
+            
 
     def plot_inputs(self, filepath):
         plot_dir = os.path.join(filepath, "plots/")
@@ -297,36 +201,7 @@ class DataSet:
             save_path = os.path.join(plot_dir, met_feature)
             plt.savefig(f"{save_path}.png", bbox_inches='tight')
             plt.close()
-        
-        print('plot gen features')
-        for gen_feature in self.gen_feature_list:
-            plot_histo(
-                [self.data_frame[gen_feature] ],
-                [gen_feature],
-                self.pretty_name,
-                gen_feature,
-                'a.u',
-                log = 'log',
-                x_range=(np.min(self.data_frame[gen_feature]), np.max(self.data_frame[gen_feature])),
-            )
-            save_path = os.path.join(plot_dir, gen_feature)
-            plt.savefig(f"{save_path}.png", bbox_inches='tight')
-            plt.close()
-        
-        print('plot multiplicity features')
-        for multiplicity_feature in self.multiplicity_feature_list:
-            plot_histo(
-                [self.data_frame[multiplicity_feature] ],
-                [multiplicity_feature],
-                self.pretty_name,
-                multiplicity_feature,
-                'a.u',
-                log = 'log',
-                x_range=(np.min(self.data_frame[multiplicity_feature]), np.max(self.data_frame[multiplicity_feature])),
-            )
-            save_path = os.path.join(plot_dir, multiplicity_feature)
-            plt.savefig(f"{save_path}.png", bbox_inches='tight')
-            plt.close()
+
         
     def normalise(self,minmax=True):
         if minmax:
@@ -354,8 +229,7 @@ class DataSet:
         self.data_frame = sampled_df.drop('bin', axis=1)
         self.data_frame.reset_index(inplace=True)
 
-                
-        
+
     def phi_rotate(self):
         # Get the phi features
         phi_columns = []
@@ -525,12 +399,11 @@ class DataSet:
         for column in self.training_columns:
             if (("PT" in column) and ("Jet" in column)):
                 pt_columns.append(column)
-        
         pt = self.data_frame[pt_columns].to_numpy()
-        
         for i,event in enumerate(pt):
             event = np.trim_zeros(event)
             if len(event) > 1:
+
                 delta_pt = self.data_frame[pt_column+str(np.argmin(event))][i]
                 delta_phi = self.data_frame[phi_column+str(np.argmin(event))][i]
                 

@@ -23,6 +23,14 @@ if __name__ == "__main__":
     parser.add_argument(
         '-o', '--output', default='output/autoencoder', help='Output model directory path, also save evaluation plots'
     )
+    
+    parser.add_argument(
+        '-e', '--events', default=-1, type=int,help='Number of the test set events to run over'
+    )
+    
+    parser.add_argument(
+        '-n', '--normalise', default='True', help='Normalise the input data?'
+    )
 
     args = parser.parse_args()
     
@@ -31,28 +39,37 @@ if __name__ == "__main__":
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
     
-    minbias = DataSet.fromH5('dataset/Minbias')
-    #minbias.normalise()
-    minbias_test = minbias.data_frame.sample(frac=0.001)
-    minbias_outputs = model.predict(minbias_test,minbias.training_columns)
-    print(minbias_outputs)
-    minbias_rates = rates(type(model).__name__,'minbias',minbias_outputs)
+    background = DataSet.fromH5('dataset/background_test')
+    training_columns = background.training_columns
+    max_jet_pt = 1000
     
-    output_dict = {"Minbias" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
+    if args.normalise == 'True':
+        background.normalise()
+    if args.events > 0:
+        background = background.data_frame.sample(n=args.events)
+    background_outputs = model.predict(background,training_columns)
+    background_rates = rates(type(model).__name__,'background',background_outputs)
+    
+    #output_dict = {"background" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
+    output_dict = {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
     
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
-        test = data_test.data_frame.sample(frac=0.001)
-        #data_test.normalise()
-        model_outputs = model.predict(test,data_test.training_columns)
-        print(model_outputs)
+        if args.normalise == 'True':
+            data_test.normalise()
+            max_jet_pt = 1
+        if args.events > 0:
+            data_test = data_test.data_frame.sample(n=args.events)
+        else:
+            data_test = data_test.data_frame.sample(frac=1.0)
+        model_outputs = model.predict(data_test,training_columns)
         efficiency_out = efficiency(type(model).__name__,datasets,model_outputs)
         output_dict[datasets] = {'predictions' : model_outputs,'efficiencies' : efficiency_out,'dataset':data_test}
+        plot_2d(data_test['L1T_JetPuppiAK4_PT0'], model_outputs, (0,max_jet_pt), (0,1), 'Leading Jet pT', 'model predictions', 'leading jet pT dependence for '+datasets)
+        save_path = os.path.join(plot_dir, "jet_pT_"+datasets)
+        plt.savefig(f"{save_path}.png", bbox_inches='tight')
+        plt.close() 
         
-        # plot_2d(data_test.data_frame['jet_multiplicity'], model_outputs, (0,10), (0,1), 'jet multiplicity', 'model predictions', 'jet multiplicity dependence for '+datasets)
-        # save_path = os.path.join(plot_dir, "jet_mult_"+datasets)
-        # plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        # plt.close() 
         # plot_2d(data_test.data_frame['electron_multiplicity'], model_outputs, (0,2), (0,1), 'electron multiplicity', 'model predictions', 'electron multiplicity dependence for '+datasets)
         # save_path = os.path.join(plot_dir, "e_mult_"+datasets)
         # plt.savefig(f"{save_path}.png", bbox_inches='tight')
@@ -66,11 +83,11 @@ if __name__ == "__main__":
         # plt.savefig(f"{save_path}.png", bbox_inches='tight')
         # plt.close() 
         
-    target_background = np.zeros(output_dict['Minbias']['predictions'].shape[0])
+    target_background = np.zeros(output_dict['background_test']['predictions'].shape[0])
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
     for i,datasets in enumerate(output_dict.keys()):
         trueVal = np.concatenate((np.ones(output_dict[datasets]['predictions'].shape[0]), target_background)) # anomaly=1, bkg=0
-        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['Minbias']['predictions']))
+        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['background']['predictions']))
 
         fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
@@ -88,16 +105,39 @@ if __name__ == "__main__":
     ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
     save_path = os.path.join(plot_dir, "output_ROC")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     plt.close() 
     
+    # target_background = np.zeros(output_dict['QCD']['predictions'].shape[0])
+    # fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+    # for i,datasets in enumerate(output_dict.keys()):
+    #     trueVal = np.concatenate((np.ones(output_dict[datasets]['predictions'].shape[0]), target_background)) # anomaly=1, bkg=0
+    #     predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['QCD']['predictions']))
+
+    #     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
+
+    #     auc_loss = auc(fpr_loss, tpr_loss)
+                
+    #     plt.plot(fpr_loss, tpr_loss, "-", label=datasets+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[i])
+            
+    # ax.semilogx()
+    # ax.semilogy()
+    # ax.set_ylabel("True Positive Rate")
+    # ax.set_xlabel("False Positive Rate")
+    # ax.legend(loc='center right')
+    # ax.grid(True)
+    # ax.plot(np.linspace(0, 1),np.linspace(0, 1), '--', color='0.75')
+    # ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
+    # save_path = os.path.join(plot_dir, "output_ROC_v_QCD")
+    # plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    # plt.close() 
     
-    if model.encoder_predict(minbias) != None:
+    
+    if model.encoder_predict(background,training_columns) != None:
     
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
         for i,datasets in enumerate(output_dict.keys()):
                 
-            latent_representations = model.encoder_predict(output_dict[datasets]['dataset'])
+            latent_representations = model.encoder_predict(output_dict[datasets]['dataset'],training_columns)
             ax.scatter(latent_representations[:, 0], latent_representations[:, 1], 
                     alpha=0.2, c=style.colours[i], edgecolor=style.colours[i], label=datasets)
         ax.set_xlabel("Latent Dimension 1")
@@ -105,15 +145,14 @@ if __name__ == "__main__":
         ax.legend()
         save_path = os.path.join(plot_dir, "latent_space")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
         plt.close() 
         
-    if model.var_predict(minbias) != None:
+    if model.var_predict(background,training_columns) != None:
     
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
         for i,datasets in enumerate(output_dict.keys()):
                 
-            mean,logvar = model.var_predict(output_dict[datasets]['dataset'])
+            mean,logvar = model.var_predict(output_dict[datasets]['dataset'],training_columns)
             ax.scatter(mean, logvar, 
                     alpha=0.2, c=style.colours[i], edgecolor=style.colours[i], label=datasets)
         ax.set_xlabel("mean")
@@ -121,7 +160,6 @@ if __name__ == "__main__":
         ax.legend()
         save_path = os.path.join(plot_dir, "mean_logvar")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
         plt.close() 
         
     plot_histo([output_dict[dataset]['predictions'] for dataset in output_dict.keys()], 
@@ -135,12 +173,11 @@ if __name__ == "__main__":
     
     save_path = os.path.join(plot_dir, "output_scores")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     plt.close() 
     
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
     for i,sample_name in enumerate(output_dict.keys()):
-        ax.plot(minbias_rates,output_dict[sample_name]['efficiencies'], label=sample_name, linewidth=style.LINEWIDTH,color = style.colours[i])
+        ax.plot(background_rates,output_dict[sample_name]['efficiencies'], label=sample_name, linewidth=style.LINEWIDTH,color = style.colours[i])
     ax.grid(True)
     ax.set_ylabel('Signal Efficiency')
     ax.set_xlabel('Background Rate')
@@ -152,21 +189,23 @@ if __name__ == "__main__":
 
     save_path = os.path.join(plot_dir, "trigger_roc")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     
-    labels = {"Minbias" : 0, "VBFHcc" :1, "ggHbb" : 2, "QCDbb" : 3, "HH4b" : 4, "QCD": 5}
+    #labels = {"background" : 0, "VBFHcc" :1, "ggHbb" : 2, "QCDbb" : 3, "HH4b" : 4, "QCD": 5}
+    labels = {"background_test" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
     dataset_list = []
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
-        #data_test.normalise()
+        if args.normalise == 'True':
+            data_test.normalise()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
-        
-    full_data_frame = pd.concat([dataset.data_frame.sample(n=5000) for dataset in dataset_list])
-    full_data_frame = full_data_frame.sample(frac=0.001)
-    combined_predictions = model.predict(full_data_frame[data_test.training_columns],data_test.training_columns)
-    
-
+       
+    if args.events > 0: 
+        full_data_frame = pd.concat([dataset.data_frame.sample(n=args.events*6) for dataset in dataset_list])
+    else:
+        full_data_frame = pd.concat([dataset.data_frame.sample(n=5000) for dataset in dataset_list])
+    full_data_frame = full_data_frame.sample(frac=1)
+    combined_predictions = model.predict(full_data_frame[data_test.training_columns],training_columns)
     
     plot_2d(full_data_frame['jet_multiplicity'], combined_predictions, (0,10), (0,1), 'jet multiplicity', 'model predictions', 'jet multiplicity dependence')
     save_path = os.path.join(plot_dir, "jet_mult")
@@ -185,6 +224,8 @@ if __name__ == "__main__":
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
     plt.close() 
     
-    
-    distances = model.distance(full_data_frame[dataset_list[0].training_columns].iloc[0:250],training_columns)
+    if args.events > 0:
+        distances = model.distance(full_data_frame[training_columns].sample(n=args.events),training_columns)
+    else:
+        distances = model.distance(full_data_frame[training_columns].sample(frac=0.5),training_columns)
     clusters(distances,labels=np.array(full_data_frame['event_label']),plot_dir=plot_dir, label_to_names={v: k for k, v in labels.items()})

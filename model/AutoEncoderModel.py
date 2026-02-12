@@ -104,12 +104,12 @@ class AutoEncoderModel(ADModel):
         
         self.history = history.history
         
-    def predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+    def predict(self, X_test, training_columns,return_score = True) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test.to_numpy()
+            test = X_test[training_columns].to_numpy()
         else:
             test = X_test
         """Predict method for model
@@ -128,12 +128,6 @@ class AutoEncoderModel(ADModel):
             return ad_scores
         else:
             return model_outputs
-        
-    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
-        return None
-    
-    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
-        return None
 
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

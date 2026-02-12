@@ -113,11 +113,15 @@ for class_name in CLASS_NAMES:
     data_set.save_h5('dataset/'+class_name)
     data_set.plot_inputs('dataset/'+class_name)
     
-    data_set_augment = DataSet.fromHF(PROCESS_TO_FOLDER[PRETTY[class_name]])
-    data_set_augment.pretty_name = PRETTY[class_name]
+    data_set_augment = data_set
     data_set_augment.drop_a_soft_one('jet')
     data_set_augment.eta_smear()
     data_set_augment.pt_smear()
     data_set_augment.phi_smear()
     data_set_augment.save_h5('dataset/'+class_name+'_augmented')
     data_set_augment.plot_inputs('dataset/'+class_name+'_augmented')
+    
+    # flat_data_set = data_set
+    # flat_data_set.uniformity('L1T_JetPuppiAK4_PT0', n_bins=100, samples_per_bin=100)
+    # flat_data_set.save_h5('dataset/'+class_name+'_flattened')
+    # flat_data_set.plot_inputs('dataset/'+class_name+'_flattened')

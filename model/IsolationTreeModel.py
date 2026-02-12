@@ -62,12 +62,12 @@ class IsolationTreeModel(ADModel):
                                                    ).train(X_train)
         
 
-    def predict(self, X_test: DataSet) -> npt.NDArray[np.float64]:
+    def predict(self, X_test: DataSet, training_columns) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.data_frame
         elif isinstance(X_test, pd.DataFrame):
-            test = X_test
+            test = X_test[training_columns]
         else:
             test = X_test
         """Predict method for model
@@ -81,19 +81,12 @@ class IsolationTreeModel(ADModel):
         ad_scores = self.AD_model.predict(test)
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         return ad_scores
-    
-    def encoder_predict(self,X_test) -> npt.NDArray[np.float64]:
-        return None
-    
-    def var_predict(self,X_test) -> npt.NDArray[np.float64]:
-        return None
-    
-    
-    
+
+
     def plot_loss(self):
         print("Not implemented for tree based methods")
         
-    def distance(self,test):
+    def distance(self,test,training_columns):
         return self.AD_model.distance(test)
     # Decorated with save decorator for added functionality
     @ADModel.save_decorator

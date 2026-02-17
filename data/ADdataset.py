@@ -105,7 +105,11 @@ class DataSet:
 
             store = pd.HDFStore(filepath+'/full_Dataset.h5')
             self.data_frame = store['df']
-            self.data_frame.reset_index(inplace=True)
+            try:
+                self.data_frame.reset_index(inplace=True)
+            except ValueError:
+                print('already reset')
+                
             store.close()
         else:
             print("No Full dataset")
@@ -337,7 +341,9 @@ class DataSet:
         eta_columns = []
         
         eta_jet_columns = []
-        eta_object_columns = []
+        
+        eta_electron_columns = []
+        eta_muon_columns = []
               
         for column in self.training_columns:
             if "Eta" in column:
@@ -345,8 +351,10 @@ class DataSet:
                     eta_columns.append(column)
                 if "Jet" in column:
                     eta_jet_columns.append(column)
-                elif "Electron" or "Muon" in column:
-                    eta_object_columns.append(column)
+                elif "Electron" in column:
+                    eta_electron_columns.append(column)
+                elif "Muon" in column:
+                    eta_muon_columns.append(column)
         # Get the pT features, only do the phi rotation if the object has non zero pT
         eta= self.data_frame[eta_columns].to_numpy()
         
@@ -369,8 +377,11 @@ class DataSet:
         self.data_frame[eta_jet_columns] = np.where(self.data_frame[eta_jet_columns]>4.5, 4.5, self.data_frame[eta_jet_columns])        
         self.data_frame[eta_jet_columns] = np.where(self.data_frame[eta_jet_columns]<-4.5, -4.5, self.data_frame[eta_jet_columns])
         
-        self.data_frame[eta_object_columns] = np.where(self.data_frame[eta_object_columns]>2.4, 2.4, self.data_frame[eta_object_columns])        
-        self.data_frame[eta_object_columns] = np.where(self.data_frame[eta_object_columns]<-2.4, -2.4, self.data_frame[eta_object_columns])
+        self.data_frame[eta_electron_columns] = np.where(self.data_frame[eta_electron_columns]>3, 3, self.data_frame[eta_electron_columns])        
+        self.data_frame[eta_electron_columns] = np.where(self.data_frame[eta_electron_columns]<-3, -3, self.data_frame[eta_electron_columns])
+
+        self.data_frame[eta_muon_columns] = np.where(self.data_frame[eta_muon_columns]>2.4, 2.4, self.data_frame[eta_muon_columns])        
+        self.data_frame[eta_muon_columns] = np.where(self.data_frame[eta_muon_columns]<-2.4, -2.4, self.data_frame[eta_muon_columns])
 
     def eta_flip(self):
         # Get the phi features
@@ -412,30 +423,21 @@ class DataSet:
                     et = self.data_frame['L1T_PUPPIMET_MET'][i]
                     phi = self.data_frame['L1T_PUPPIMET_Phi'][i]
                     
-                    #print(et)
-                    #print(phi)
+                    deltapx = delta_pt * np.cos(delta_phi)
+                    deltapy = delta_pt * np.sin(delta_phi)
                     
-                    #print(delta_pt)
-                    #print(delta_phi)
-                                
-                    sumpx = np.sqrt(et**2 / (1 + np.tan(phi)**2))
-                    sumpy = np.tan(phi) * sumpx
-
-                    deltapx = delta_pt * np.cos(delta_phi);
-                    deltapy = delta_pt * np.sin(delta_phi);
-                
-                    newet = np.sqrt((sumpx - deltapx)**2 + (sumpy - deltapy)**2)
-                    etphi = np.arctan2(sumpy - deltapx, sumpx - deltapy)
+                    etpx = et * np.cos(phi)
+                    etpy = et * np.sin(phi)
                     
-                    #print(newet)
-                    #print(etphi)
+                    sumpx = etpx - deltapx
+                    sumpy = etpy - deltapy
+                    
+                    newet = np.sqrt(sumpx**2 + sumpy**2) 
+                    etphi = np.atan2(sumpy , sumpx ) 
                     
                     self.data_frame.loc[i, 'L1T_PUPPIMET_MET'] = newet
                     self.data_frame.loc[i, 'L1T_PUPPIMET_Phi'] = etphi
-                    
-                    self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']>np.pi,  self.data_frame['L1T_PUPPIMET_Phi'] - 2*np.pi,self.data_frame['L1T_PUPPIMET_Phi'])        
-                    self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']<-np.pi, self.data_frame['L1T_PUPPIMET_Phi']+2*np.pi,self.data_frame['L1T_PUPPIMET_Phi'])
-                    
+                                        
                     self.data_frame.loc[i, pt_column+str(np.argmin(event))] = 0
                     self.data_frame.loc[i, phi_column+str(np.argmin(event))] = 0
                 

@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
 from model.common import fromFolder
-from data.dataset import DataSet
+from data.ADdataset import DataSet
 
 from plot import style
 
@@ -41,23 +41,42 @@ if __name__ == "__main__":
       
   
     background = DataSet.fromH5('dataset/background_test')
-    training_columns = background.training_columns
     if args.normalise == 'True':
       background.normalise()
+    else:
+      background.max_number_of_jets = 5
+      background.max_number_of_objects = 2
+      background.max_number_of_objects = 2
+      background.generate_feature_lists()
+    
+    training_columns = background.training_columns
+
+
     if args.events > 0:
       background = background.data_frame.sample(n=args.events)
     background_outputs = model.predict(background,training_columns)
     
-    background_augment = DataSet.fromH5('dataset/background_augment_test')
+    background_augment = DataSet.fromH5('dataset/background_test_augmented')
     if args.normalise == 'True':
       background_augment.normalise()
+    else:
+      background_augment.max_number_of_jets = 5
+      background_augment.max_number_of_objects = 2
+      background_augment.max_number_of_objects = 2
+      background_augment.generate_feature_lists()
+    
     if args.events > 0:
-      minbias_augment = background_augment.data_frame.sample(n=args.events)
+      background_augment = background_augment.data_frame.sample(n=args.events)
     background_augment_outputs = model.predict(background_augment,training_columns)
     
     ato4l_augment = DataSet.fromH5('dataset/ato4l_augmented')
     if args.normalise == 'True':
       ato4l_augment.normalise()
+    else:
+      ato4l_augment.max_number_of_jets = 5
+      ato4l_augment.max_number_of_objects = 2
+      ato4l_augment.max_number_of_objects = 2
+      ato4l_augment.generate_feature_lists()
     if args.events > 0:
       ato4l_augment = ato4l_augment.data_frame.sample(n=args.events)
     ato4l_augment_outputs = model.predict(ato4l_augment,training_columns)
@@ -65,6 +84,11 @@ if __name__ == "__main__":
     ato4l = DataSet.fromH5('dataset/ato4l')
     if args.normalise == 'True':
       ato4l.normalise()
+    else:
+      ato4l.max_number_of_jets = 5
+      ato4l.max_number_of_objects = 2
+      ato4l.max_number_of_objects = 2
+      ato4l.generate_feature_lists()
     if args.events > 0:
       ato4l = ato4l.data_frame.sample(n=args.events)
     ato4l_outputs = model.predict(ato4l,training_columns)   
@@ -83,7 +107,7 @@ if __name__ == "__main__":
     
     
     trueVal = np.concatenate((np.ones(ato4l_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
-    predVal_loss = np.concatenate((ato4l_outputs, backgrouns_outputs))
+    predVal_loss = np.concatenate((ato4l_outputs, background_outputs))
 
     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 

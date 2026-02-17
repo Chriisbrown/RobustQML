@@ -3,7 +3,7 @@ import os
 import numpy.typing as npt
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
-from data.dataset import DataSet
+from data.ADdataset import DataSet
 import pandas as pd
 
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -55,9 +55,9 @@ class PennyLaneQAEModel(ADModel):
     def __init__(self,output_dir):
         super().__init__(output_dir)
     
-        self.number_of_jets = 5
-        self.number_of_muons = 2
-        self.number_of_electrons = 2
+        self.number_of_jets = 10
+        self.number_of_muons = 4
+        self.number_of_electrons = 4
         
         self.jet_indices = 0,self.number_of_jets
         self.muon_indices = self.jet_indices[1] ,self.jet_indices[1] + self.number_of_muons
@@ -133,28 +133,34 @@ class PennyLaneQAEModel(ADModel):
         self.circuit = circuit
 
     def autoencoder(self,circuit_weights, normalisation_weight, x1,x2):
-        theta = np.zeros_like(x1)
-        phi = np.zeros_like(x2)
+        #theta = np.zeros_like(x1)
+        #phi = np.zeros_like(x2)
         # normalisation weight feature specific, 0-4 jets, 5-8 muons, 9-12 electrons, 13 sums
-        f_jets = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[0]))    
-        f_muons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[1]))    
-        f_electrons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[2]))    
+        
+        #f_jets = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[0]))    
+        # f_muons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[1]))    
+        # f_electrons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[2]))    
         #f_sums = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[3]))    
         
-        theta_jets = f_jets * x1[self.jet_indices[0]:self.jet_indices[1]]
-        phi_jets = f_jets * x2[self.jet_indices[0]:self.jet_indices[1]]
+        # theta_jets = f_jets * x1[self.jet_indices[0]:self.jet_indices[1]]
+        # phi_jets = f_jets * x2[self.jet_indices[0]:self.jet_indices[1]]
         
-        theta_muons = f_muons * x1[self.muon_indices[0]:self.muon_indices[1]]
-        phi_muons = f_muons * x2[self.muon_indices[0]:self.muon_indices[1]]
+        # theta_muons = f_muons * x1[self.muon_indices[0]:self.muon_indices[1]]
+        # phi_muons = f_muons * x2[self.muon_indices[0]:self.muon_indices[1]]
         
-        theta_electons = f_electrons * x1[self.electron_indices[0]:self.electron_indices[1]]
-        phi_electons = f_electrons * x2[self.electron_indices[0]:self.electron_indices[1]]
+        # theta_electons = f_electrons * x1[self.electron_indices[0]:self.electron_indices[1]]
+        # phi_electons = f_electrons * x2[self.electron_indices[0]:self.electron_indices[1]]
         
         #theta_sums = np.expand_dims(f_sums * x1[self.sum_indices],axis=0)
         #phi_sums = np.expand_dims(f_sums * x2[self.sum_indices],axis=0)
          
-        theta = np.concatenate((theta_jets,theta_muons,theta_electons))
-        phi = np.concatenate((phi_jets,phi_muons,phi_electons))
+        #theta = np.concatenate((theta_jets,theta_muons,theta_electons))
+        #phi = np.concatenate((phi_jets,phi_muons,phi_electons))
+        
+        f = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight))    
+        
+        theta = f * x1
+        phi = f * x2
         
         return self.circuit(circuit_weights, theta,phi,return_projector=True)
 
@@ -165,7 +171,7 @@ class PennyLaneQAEModel(ADModel):
             predictions += qml.math.mean(single_value_predict)
         return predictions / len(x1)
 
-    def compile_model(self, **kwargs):
+    def compile_model(self, n_samples,**kwargs):
         #self.opt = NesterovMomentumOptimizer(0.5)
         #self.opt = qml.QNGOptimizer(0.01, approx="block-diag")
         self.opt = qml.AdamOptimizer(self.training_config['learning_rate'])
@@ -189,7 +195,6 @@ class PennyLaneQAEModel(ADModel):
         for column in training_columns:
             if ("PT" in column) :
                 pt_columns.append(column)
-        print(pt_columns)       
         pt = X_train[pt_columns].to_numpy()
         
         print(pt.shape)
@@ -439,7 +444,7 @@ class PennyLaneQAEModel(ADModel):
         plt.savefig(self.output_directory+'/plots/training/pt_tot.png')
 
         circuit_weights_init = 0.01 * np.random.randn(self.nq*4, requires_grad=True)
-        normalisation_weight_init = np.zeros(4, requires_grad=True)
+        normalisation_weight_init = np.zeros(1, requires_grad=True)
                 
         self.circuit_weights = circuit_weights_init
         self.normalisation_weight = normalisation_weight_init
@@ -454,16 +459,16 @@ class PennyLaneQAEModel(ADModel):
 
             # Update the weights by one optimizer step, using only a limited batch of data
             batch_index = np.random.choice(uniform_sample_pt, (self.batch_size,))
-            x1_batch = x1[batch_index]
-            x2_batch = x2[batch_index]
+            x1_batch = old_x1[batch_index]
+            x2_batch = old_x2[batch_index]
             
             self.circuit_weights, self.normalisation_weight = self.opt.step(self.cost, self.circuit_weights, self.normalisation_weight, x1=x1_batch, x2=x2_batch)
 
             current_cost = self.cost(self.circuit_weights, self.normalisation_weight, x1_batch,x2_batch )
             cost.append(current_cost)
             
-            x1_val_batch = x1[val_batch_index]
-            x2_val_batch = x2[val_batch_index]
+            x1_val_batch = old_x1[val_batch_index]
+            x2_val_batch = old_x2[val_batch_index]
             
             # Compute accuracy            
             validation_cost = self.cost(self.circuit_weights, self.normalisation_weight, x1_val_batch,x2_val_batch )
@@ -522,19 +527,19 @@ class PennyLaneQAEModel(ADModel):
         
         pt = X_test[pt_columns].to_numpy()
         pt_tot = np.sum(pt,axis=1) 
-        pt_columns.append('L1T_PUPPIMET_MET')
+        #pt_columns.append('L1T_PUPPIMET_MET')
         all_pt = X_test[pt_columns].to_numpy()
         
         eta_columns = []
         for column in training_columns:
-            if (("Eta" in column)):
+            if (("Eta" in column) and ('PUPPIMET' not in column)):
                 eta_columns.append(column)
         
         eta = X_test[eta_columns].to_numpy()
         
         phi_columns = []
         for column in training_columns:
-            if (("Phi" in column)):
+            if (("Phi" in column) and ('PUPPIMET' not in column)):
                 phi_columns.append(column)
         
         phi = X_test[phi_columns].to_numpy()
@@ -542,6 +547,10 @@ class PennyLaneQAEModel(ADModel):
         x1 = (all_pt/pt_tot[:,None]) * eta
         x2 = (all_pt/pt_tot[:,None]) * phi
         
+        x1 = (((x1 - np.min(x1)) / (np.max(x1) - np.min(x1))) * 2*np.pi) - np.pi
+        x2 = (((x2 - np.min(x2)) / (np.max(x2) - np.min(x2))) * 2*np.pi) - np.pi
+        print(x1.shape)
+        print(self.circuit_weights.shape)
         predictions = []
         
         for ievent in range(len(x1)):

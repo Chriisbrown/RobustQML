@@ -21,8 +21,8 @@ def train(model ,normalise):
             data_test.normalise()
         else:
             data_test.max_number_of_jets = 5
-            data_test.max_number_of_objects = 2
-            data_test.max_number_of_objects = 2
+            data_test.max_number_of_objects = 4
+            data_test.max_number_of_objects = 4
             data_test.generate_feature_lists()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
@@ -32,9 +32,9 @@ def train(model ,normalise):
     full_data_frame = full_data_frame.sample(frac=1)
     
     input_shape = len(training_columns)
-    print(training_columns)
+    input_length = len(full_data_frame)
     model.build_model(input_shape)
-    model.compile_model()
+    model.compile_model(input_length)
     model.fit(full_data_frame,training_columns)
     model.save()
     model.plot_loss()

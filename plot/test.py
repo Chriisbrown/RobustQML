@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
 from model.common import fromFolder
-from data.dataset import DataSet
+from data.ADdataset import DataSet
 
 from plot import style
 
@@ -40,24 +40,36 @@ if __name__ == "__main__":
     os.makedirs(plot_dir, exist_ok=True)
     
     background = DataSet.fromH5('dataset/background_test')
-    training_columns = background.training_columns
     max_jet_pt = 1000
     
     if args.normalise == 'True':
         background.normalise()
+    else:
+        background.max_number_of_jets = 5
+        background.max_number_of_objects = 4
+        background.max_number_of_objects = 4
+        background.generate_feature_lists()
+    
+    training_columns = background.training_columns
+
     if args.events > 0:
         background = background.data_frame.sample(n=args.events)
     background_outputs = model.predict(background,training_columns)
-    background_rates = rates(type(model).__name__,'background',background_outputs)
+    background_rates = rates(type(model).__name__,'background_test',background_outputs)
     
     #output_dict = {"background" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
-    output_dict = {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
+    output_dict = {"background_test" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
     
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('dataset/'+datasets)
         if args.normalise == 'True':
             data_test.normalise()
             max_jet_pt = 1
+        else:
+            data_test.max_number_of_jets = 5
+            data_test.max_number_of_objects = 2
+            data_test.max_number_of_objects = 2
+            data_test.generate_feature_lists()
         if args.events > 0:
             data_test = data_test.data_frame.sample(n=args.events)
         else:
@@ -87,7 +99,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
     for i,datasets in enumerate(output_dict.keys()):
         trueVal = np.concatenate((np.ones(output_dict[datasets]['predictions'].shape[0]), target_background)) # anomaly=1, bkg=0
-        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['background']['predictions']))
+        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['background_test']['predictions']))
 
         fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
@@ -197,6 +209,11 @@ if __name__ == "__main__":
         data_test = DataSet.fromH5('dataset/'+datasets)
         if args.normalise == 'True':
             data_test.normalise()
+        else:
+            data_test.max_number_of_jets = 5
+            data_test.max_number_of_objects = 4
+            data_test.max_number_of_objects = 4
+            data_test.generate_feature_lists()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
        
@@ -207,22 +224,22 @@ if __name__ == "__main__":
     full_data_frame = full_data_frame.sample(frac=1)
     combined_predictions = model.predict(full_data_frame[data_test.training_columns],training_columns)
     
-    plot_2d(full_data_frame['jet_multiplicity'], combined_predictions, (0,10), (0,1), 'jet multiplicity', 'model predictions', 'jet multiplicity dependence')
-    save_path = os.path.join(plot_dir, "jet_mult")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.close() 
-    plot_2d(full_data_frame['electron_multiplicity'], combined_predictions, (0,2), (0,1), 'electron multiplicity', 'model predictions', 'electron multiplicity dependence')
-    save_path = os.path.join(plot_dir, "e_mult")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.close() 
-    plot_2d(full_data_frame['muon_multiplicity'], combined_predictions, (0,2), (0,1), 'muon multiplicity', 'model predictions', 'muon multiplicity dependence')
-    save_path = os.path.join(plot_dir, "mu_mult")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.close() 
-    plot_2d(full_data_frame['FullReco_GenMissingET_MET'], combined_predictions, (0,100), (0,1), 'Gen Missing ET', 'model predictions', 'Gen Missing ET dependence')
-    save_path = os.path.join(plot_dir, "genEt")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.close() 
+    # plot_2d(full_data_frame['jet_multiplicity'], combined_predictions, (0,10), (0,1), 'jet multiplicity', 'model predictions', 'jet multiplicity dependence')
+    # save_path = os.path.join(plot_dir, "jet_mult")
+    # plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    # plt.close() 
+    # plot_2d(full_data_frame['electron_multiplicity'], combined_predictions, (0,2), (0,1), 'electron multiplicity', 'model predictions', 'electron multiplicity dependence')
+    # save_path = os.path.join(plot_dir, "e_mult")
+    # plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    # plt.close() 
+    # plot_2d(full_data_frame['muon_multiplicity'], combined_predictions, (0,2), (0,1), 'muon multiplicity', 'model predictions', 'muon multiplicity dependence')
+    # save_path = os.path.join(plot_dir, "mu_mult")
+    # plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    # plt.close() 
+    # plot_2d(full_data_frame['FullReco_GenMissingET_MET'], combined_predictions, (0,100), (0,1), 'Gen Missing ET', 'model predictions', 'Gen Missing ET dependence')
+    # save_path = os.path.join(plot_dir, "genEt")
+    # plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    # plt.close() 
     
     if args.events > 0:
         distances = model.distance(full_data_frame[training_columns].sample(n=args.events),training_columns)

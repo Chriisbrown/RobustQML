@@ -14,7 +14,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
-from data.dataset import DataSet
+from data.ADdataset import DataSet
 
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
@@ -110,7 +110,7 @@ def supervised_SimCLR_contrastive_loss(zs, labels, temperature=0.07,**kwargs):
         return tf.reduce_mean(loss)
     
     
-def SimCLRLoss(zs, labels, temperature=0.07,**kwargs):
+def SimCLRLoss(zs, labels, temperature=0.1,**kwargs):
         # def SimCLRLoss(features, labels, temperature = 0.07):
         '''
         Computes SimCLRLoss as defined in https://arxiv.org/pdf/2004.11362.pdf
@@ -242,7 +242,7 @@ class Preprocessing(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
         self.augment = tf.keras.Sequential([
-            PerObjectMaskingLayer(0.2),
+            PerObjectMaskingLayer(0.5),
             #PhiRotationLayer(),
         ])
         
@@ -276,7 +276,7 @@ class Contrastive(keras.Model):
         project_layers = []
         for i in range(projection_blocks):
             project_layers.append(Dense(self.num_features,activation='linear'))
-            project_layers.append(BatchNormalization())
+            #project_layers.append(BatchNormalization())
             project_layers.append(ReLU())
         project_layers.append(Dense(self.num_features, use_bias=False,activation='linear'))
         project_layers.append(L2NormalizeLayer())
@@ -357,13 +357,22 @@ class ContrastiveEmbeddingModel(ADModel):
         print(self.contrastive_model.summary())
         print(self.vae_model.summary())
 
-    def compile_model(self):
+    def compile_model(self, input_length):
         """compile the model generating callbacks and loss function
         Args:
             num_samples (int): Number of samples in the training set used for scheduling
         """
         
-        self.repr_optimizer = keras.optimizers.Adam(learning_rate=self.training_config['emb_learning_rate'])
+        scheduler = keras.optimizers.schedules.CosineDecay(
+                                                self.training_config['emb_learning_rate'],
+                                                int(input_length/ (self.training_config['batch_size']*self.training_config['constrastive_epochs'])),
+                                                alpha=0.0,
+                                                name="CosineDecay",
+                                                warmup_target=None,
+                                                warmup_steps=0,
+                                            )
+        
+        self.repr_optimizer = keras.optimizers.AdamW(learning_rate=scheduler,weight_decay=self.training_config['emb_learning_rate_decay'],)
 
         # compile the tensorflow model setting the loss and metrics
         self.contrastive_model.compile(

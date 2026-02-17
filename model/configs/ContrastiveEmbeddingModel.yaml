@@ -14,12 +14,13 @@ model_config :
   decoder_layers : [6,8]
 
 training_config :
-  constrastive_epochs : 10
+  constrastive_epochs : 2
   epochs : 20
-  batch_size : 5120
-  emb_learning_rate : 0.0001
+  batch_size : 64
+  emb_learning_rate : 0.01
   learning_rate : 0.001
   validation_split : 0.1
+  emb_learning_rate_decay : 0.0001
 
   EarlyStopping_patience : 10
 

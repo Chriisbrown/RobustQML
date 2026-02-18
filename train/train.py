@@ -6,21 +6,21 @@ import numpy as np
 import pandas as pd
 # Import from other modules
 from model.common import fromYaml
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 
 def train(model ,normalise):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
     
     #labels = {"QCD": 0, 'QCDbb':1}
-    labels = {"background_train": 0}
+    labels = {"QCD_HT50toInf": 0}
     dataset_list = []
     for datasets in labels.keys():
-        data_test = DataSet.fromH5('dataset/'+datasets)
+        data_test = DataSet.fromH5('training_data/'+datasets)
         if normalise == "True":
             data_test.normalise()
         else:
-            data_test.max_number_of_jets = 5
+            data_test.max_number_of_jets = 10
             data_test.max_number_of_objects = 4
             data_test.max_number_of_objects = 4
             data_test.generate_feature_lists()

@@ -14,7 +14,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 

@@ -9,7 +9,7 @@ import pandas as pd
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 
 import keras
 from keras.models import load_model

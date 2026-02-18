@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 
 import pandas as pd
 

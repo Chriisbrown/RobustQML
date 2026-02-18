@@ -1,5 +1,5 @@
 # Import from other modules
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 
 # SELECTED = {
 #     "DY": "DY to ll",

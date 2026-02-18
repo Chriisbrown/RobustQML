@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
 from model.common import fromFolder
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 
 from plot import style
 

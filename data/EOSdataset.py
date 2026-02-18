@@ -1,26 +1,24 @@
 import numpy as np
 import pandas as pd
-import datasets
-from datasets import load_dataset
 import awkward as ak
 import time
 import datetime
 from pathlib import Path
 import json
-import dask.dataframe as dd
 import os
 from plot.basic import plot_histo
 import matplotlib.pyplot as plt
 import multiprocessing
 import math
 
+
 from sklearn.preprocessing import MinMaxScaler
 
 
 def add_multiplicities(array):        
-    array['jet_multiplicity'] = ak.count_nonzero(array['L1T_JetPuppiAK4_PT'])
-    array['muon_multiplicity'] = ak.count_nonzero(array['L1T_MuonTight_PT'])
-    array['electron_multiplicity'] = ak.count_nonzero(array['L1T_Electron_PT'])
+    array['jet_multiplicity'] = np.count_nonzero(array['L1T_JetPuppiAK4_PT'])
+    array['muon_multiplicity'] = np.count_nonzero(array['L1T_MuonTight_PT'])
+    array['electron_multiplicity'] = np.count_nonzero(array['L1T_Electron_PT'])
     # array['pfcand_multiplicity'] = ak.count_nonzero(array['L1T_PFCand_PT'])
     # array['puppicand_multiplicity'] = ak.count_nonzero(array['L1T_PUPPIPart_PT'])
     return array
@@ -74,23 +72,23 @@ class DataSet:
         self.max_number_of_electrons = 4
         self.max_number_of_muons = 4
         
-        self.jet_pt_cut = 10
-        self.electron_pt_cut = 2 
+        self.jet_pt_cut = 20
+        self.electron_pt_cut = 4 
         self.muon_pt_cut = 2
         
         self.jet_feature_list = ['L1T_JetPuppiAK4_PT','L1T_JetPuppiAK4_Eta','L1T_JetPuppiAK4_Phi']
         self.muon_feature_list = ['L1T_MuonTight_PT','L1T_MuonTight_Eta','L1T_MuonTight_Phi']
         self.electron_feature_list = ['L1T_Electron_PT','L1T_Electron_Eta','L1T_Electron_Phi']
         self.met_feature_list = ['L1T_PUPPIMET_MET','L1T_PUPPIMET_Eta','L1T_PUPPIMET_Phi']
-        self.gen_feature_list = ['FullReco_GenMissingET_MET']
+        self.gen_feature_list = ['Gen_MissingET_MET']
         self.multiplicity_feature_list = ['jet_multiplicity','muon_multiplicity','electron_multiplicity']
         
-        top_x_jets = [feature + str(i) for feature in self.jet_feature_list for i in range(self.max_number_of_jets)]
-        top_x_muons = [feature + str(i) for feature in self.muon_feature_list for i in range(self.max_number_of_objects)]
-        top_x_electrons = [feature + str(i) for feature in self.electron_feature_list for i in range(self.max_number_of_objects)]
+        top_x_jets = [feature + str(i) for i in range(self.max_number_of_jets) for feature in self.jet_feature_list]
+        top_x_muons = [feature + str(i) for i in range(self.max_number_of_muons) for feature in self.muon_feature_list ]
+        top_x_electrons = [feature + str(i) for i in range(self.max_number_of_electrons) for feature in self.electron_feature_list ]
         self.all_features = self.met_feature_list + self.gen_feature_list+ self.multiplicity_feature_list + top_x_jets + top_x_muons + top_x_electrons
         
-        self.training_columns =  top_x_jets + top_x_muons + top_x_electrons + self.met_feature_list
+        self.training_columns =  top_x_jets + top_x_electrons + top_x_muons +  self.met_feature_list
         self.non_met_columns = [column for column in self.training_columns if "PT" in column ]
         self.random_state = 4
         self.verbose = 1
@@ -109,10 +107,10 @@ class DataSet:
         self.data_frame = orig.data_frame
     
     @classmethod
-    def fromHF(cls, filepath,max_number_of_events=-1):
-        hfclass = cls("From Hugging Face")
-        hfclass.load_data_from_HF(filepath=filepath,max_number_of_events=max_number_of_events)
-        return hfclass
+    def fromEOS(cls, filepath,):
+        eosclass = cls("From EOS")
+        eosclass.load_data_from_EOS(filepath=filepath)
+        return eosclass
     
     @classmethod
     def fromH5(cls, filepath):
@@ -123,7 +121,7 @@ class DataSet:
     def get_training_dataset(self):
         return self.data_frame[self.training_columns]
     
-    def load_data_from_EOS(self, filepath: str, max_number_of_events : int = 2000):
+    def load_data_from_EOS(self, filepath: str):
         starting_time = time.time()
         
         columns = self.jet_feature_list + self.muon_feature_list + self.electron_feature_list + self.met_feature_list + self.gen_feature_list
@@ -133,82 +131,83 @@ class DataSet:
         feature_array = []
 
         for ievent in range(len(dataset['L1T_JetPuppiAK4_PT'])):
-            feature_vector = np.zeros([self.max_number_of_jets * 3 + self.max_number_of_muons * 3 + self.max_number_of_electrons * 3 + 3 ])
+            feature_vector = np.zeros([self.max_number_of_jets * 3 + self.max_number_of_muons * 3 + self.max_number_of_electrons * 3 + len(self.met_feature_list) + len(self.gen_feature_list) + len(self.multiplicity_feature_list) ])
             offset = 0
             for ijet in range(self.max_number_of_jets):
                 try:
                     feature_vector[offset + ijet*3 + 0] = dataset['L1T_JetPuppiAK4_PT'][ievent][ijet]
                     feature_vector[offset + ijet*3 + 1] = dataset['L1T_JetPuppiAK4_Eta'][ievent][ijet]
                     feature_vector[offset + ijet*3 + 2] = dataset['L1T_JetPuppiAK4_Phi'][ievent][ijet]
-                except:
+                except IndexError:
                     feature_vector[offset + ijet*3 + 0] = 0
                     feature_vector[offset + ijet*3 + 1] = 0
                     feature_vector[offset + ijet*3 + 2] = 0
-            offset = self.max_number_of_jets
+            offset = self.max_number_of_jets*3
             for ielectron in range(self.max_number_of_electrons):
                 try:
                     feature_vector[offset + ielectron*3 + 0] = dataset['L1T_Electron_PT'][ievent][ielectron]
                     feature_vector[offset + ielectron*3 + 1] = dataset['L1T_Electron_Eta'][ievent][ielectron]
-                    feature_vector[offset + ielectron*3 + 2] = dataset['L1T_Electron_Phi'][ievent][ielectron]
-                except: 
+                    feature_vector[offset + ielectron*3 + 2] = dataset['L1T_Electron_Phi'][ievent][ielectron]  
+                except IndexError:
                     feature_vector[offset + ielectron*3 + 0] = 0
                     feature_vector[offset + ielectron*3 + 1] = 0
                     feature_vector[offset + ielectron*3 + 2] = 0
-                    
-            offset = self.max_number_of_jets + self.max_number_of_electrons   
+            offset = self.max_number_of_jets*3 + self.max_number_of_electrons*3  
             for imuon in range(self.max_number_of_muons):
                 try:
                     feature_vector[offset + imuon*3 + 0] = dataset['L1T_MuonTight_PT'][ievent][imuon]
                     feature_vector[offset + imuon*3 + 1] = dataset['L1T_MuonTight_Eta'][ievent][imuon]
-                    feature_vector[offset + imuon*3 + 2] = dataset['L1T_MuonTight_Phi'][ievent][imuon]    
-                except: 
+                    feature_vector[offset + imuon*3 + 2] = dataset['L1T_MuonTight_Phi'][ievent][imuon]
+                except IndexError:    
                     feature_vector[offset + imuon*3 + 0] = 0
                     feature_vector[offset + imuon*3 + 1] = 0
                     feature_vector[offset + imuon*3 + 2] = 0
-                                   
-            offset = self.max_number_of_jets + self.max_number_of_electrons + self.max_number_of_muons 
+
+            offset = self.max_number_of_jets*3 + self.max_number_of_electrons*3 + self.max_number_of_muons*3
             feature_vector[offset + 0] = dataset['L1T_PUPPIMET_MET'][ievent]
             feature_vector[offset + 1] = 0
             feature_vector[offset + 2] = dataset['L1T_PUPPIMET_Phi'][ievent]
+            feature_vector[offset + 3] = dataset['Gen_MissingET_MET'][ievent]
+            
+            feature_vector[offset + 4] = len(dataset['L1T_JetPuppiAK4_PT'][ievent])
+            feature_vector[offset + 5] = len(dataset['L1T_Electron_PT'][ievent])
+            feature_vector[offset + 6] = len(dataset['L1T_Electron_Phi'][ievent])
+            
+            
 
             feature_array.append(feature_vector)
         
         new_feature_array = np.stack( feature_array)
         
-        self.data_frame = pd.DataFrame(new_feature_array, columns=self.training_columns)
+        self.data_frame = pd.DataFrame(new_feature_array, columns=self.training_columns + self.gen_feature_list + self.multiplicity_feature_list)
         
-        
-        print("Pt Cuts")
         for i in range(self.max_number_of_jets):
             mask = np.where((self.data_frame['L1T_JetPuppiAK4_PT'+str(i)] > self.jet_pt_cut),1,0)
             self.data_frame['L1T_JetPuppiAK4_PT'+str(i)] =  self.data_frame['L1T_JetPuppiAK4_PT'+str(i)] * mask
             self.data_frame['L1T_JetPuppiAK4_Eta'+str(i)] = self.data_frame['L1T_JetPuppiAK4_Eta'+str(i)] * mask
             self.data_frame['L1T_JetPuppiAK4_Phi'+str(i)] = self.data_frame['L1T_JetPuppiAK4_Phi'+str(i)]  * mask
             
-        for i in range(self.max_number_of_objects):
+        for i in range(self.max_number_of_muons):
             mask  = np.where((self.data_frame['L1T_MuonTight_PT'+str(i)] > self.muon_pt_cut),1,0)
             self.data_frame['L1T_MuonTight_PT'+str(i)] =  self.data_frame['L1T_MuonTight_PT'+str(i)] * mask
             self.data_frame['L1T_MuonTight_Eta'+str(i)] = self.data_frame['L1T_MuonTight_Eta'+str(i)] * mask
             self.data_frame['L1T_MuonTight_Phi'+str(i)] = self.data_frame['L1T_MuonTight_Phi'+str(i)]  * mask
             
-        for i in range(self.max_number_of_objects):
+        for i in range(self.max_number_of_electrons):
             mask = np.where((self.data_frame['L1T_Electron_PT'+str(i)] > self.electron_pt_cut),1,0)
             self.data_frame['L1T_Electron_PT'+str(i)] =  self.data_frame['L1T_Electron_PT'+str(i)] * mask
             self.data_frame['L1T_Electron_Eta'+str(i)] = self.data_frame['L1T_Electron_Eta'+str(i)] * mask
             self.data_frame['L1T_Electron_Phi'+str(i)] = self.data_frame['L1T_Electron_Phi'+str(i)]  * mask
 
-        print(self.data_frame.describe())
+        #print(self.data_frame.describe())
         
         self.data_frame = self.data_frame[self.data_frame[self.non_met_columns].sum(axis=1) != 0]
         self.data_frame.reset_index(inplace=True)
         
-        self.config_dict["HFLoaded"] = datetime.datetime.now().strftime(
+        self.config_dict["EOSLoaded"] = datetime.datetime.now().strftime(
             "%H:%M %d/%m/%y")
-        self.config_dict["HFfilepath"] = filepath
+        self.config_dict["EOSfilepath"] = filepath
         self.config_dict["NumEvents"] = len(self.data_frame)
-        if self.verbose == 1:
-            print("Event Reading Complete, read: ",
-                  len(self.data_frame), " events in ", time.time() - starting_time, " seconds")
 
     def save_h5(self, filepath):
         Path(filepath).mkdir(parents=True, exist_ok=True)
@@ -267,8 +266,8 @@ class DataSet:
         print('plot muon features')
         for muon_feature in self.muon_feature_list:
             plot_histo(
-                [self.data_frame[muon_feature +  str(i)] for i in range(self.max_number_of_objects)],
-                [muon_feature +  str(i) for i in range(self.max_number_of_objects)],
+                [self.data_frame[muon_feature +  str(i)] for i in range(self.max_number_of_muons)],
+                [muon_feature +  str(i) for i in range(self.max_number_of_muons)],
                 self.pretty_name,
                 muon_feature,
                 'a.u',
@@ -282,8 +281,8 @@ class DataSet:
         print('plot electron features')
         for electron_feature in self.electron_feature_list:
             plot_histo(
-                [self.data_frame[electron_feature +  str(i)] for i in range(self.max_number_of_objects)],
-                [electron_feature +  str(i) for i in range(self.max_number_of_objects)],
+                [self.data_frame[electron_feature +  str(i)] for i in range(self.max_number_of_electrons)],
+                [electron_feature +  str(i) for i in range(self.max_number_of_electrons)],
                 self.pretty_name,
                 electron_feature,
                 'a.u',

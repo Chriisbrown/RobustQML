@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 
 from model.AnomalyDetectionModel import ADModelFactory, ADModel
-from data.ADdataset import DataSet
+from data.EOSdataset import DataSet
 import pandas as pd
 
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -57,7 +57,7 @@ class AutoEncoderModel(ADModel):
                 
         self.AD_model = keras.Model(inputs=inputs, outputs=decoder)
         
-    def compile_model(self):
+    def compile_model(self,num_samples):
         """compile the model generating callbacks and loss function
         Args:
         """

@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from data.EOSdataset import DataSet
 from tqdm import tqdm
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 if __name__ == "__main__":
 
@@ -33,9 +34,9 @@ if __name__ == "__main__":
     
     
     
-    max_files_per_process = 100
+    max_files_per_process = 300
     
-    test_fraction = 0.1
+    test_fraction = 0.6
     
     
     input_directory = '/eos/project/f/foundational-model-dataset/samples/production_final/'
@@ -52,6 +53,27 @@ if __name__ == "__main__":
         process_data_frame = pd.concat([data.data_frame for data in data_set_list])
         process_data_set = DataSet(process)
         process_data_set.data_frame = process_data_frame
-        process_data_set.plot_inputs(outdir+process)
-        process_data_set.save_h5(outdir+process)
-    
+        process_test_data_set = process_data_set
+
+        train, test = train_test_split(process_data_frame.data_frame, test_size=test_fraction)
+        process_data_set.data_frame = train
+        process_test_data_set.data_frame = test
+        
+        process_augment_data_set = process_data_set
+        train, test = train_test_split(process_test_data_frame.data_frame, test_size=test_fraction/2)
+        process_test_data_set.data_frame = train
+        process_augment_data_set.data_frame = test
+
+        process_data_set.plot_inputs(outdir+process+'/train')
+        process_data_set.save_h5(outdir+process+'/train')
+
+        process_test_data_set.plot_inputs(outdir+process+'/test')
+        process_test_data_set.save_h5(outdir+process+'/test')
+        
+        process_augment_data_set.drop_a_soft_one('jet')
+        process_augment_data_set.eta_smear()
+        process_augment_data_set.pt_smear()
+        process_augment_data_set.phi_smear()
+        process_augment_data_set.plot_inputs(outdir+process+'/augment')
+        process_augment_data_set.save_h5(outdir+process+'/augment')
+     

@@ -37,7 +37,7 @@ class IsolationTreeModel(ADModel):
         
         pass
 
-    def compile_model(self):
+    def compile_model(self,num_samples):
         """compile the model generating callbacks and loss function
         Args:
         """

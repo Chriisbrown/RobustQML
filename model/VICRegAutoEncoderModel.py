@@ -222,7 +222,7 @@ class VICRegModel(ADModel):
         print(self.vicreg_model.summary())
         print(self.vae_model.summary())
 
-    def compile_model(self):
+    def compile_model(self,num_samples):
         """compile the model generating callbacks and loss function
         Args:
             num_samples (int): Number of samples in the training set used for scheduling

@@ -138,7 +138,7 @@ class AXOVariationalAutoEncoderModel(ADModel):
         self.AD_model = AXOVAE( inputs_shape, latent_dim)
         print(self.AD_model.summary())
 
-    def compile_model(self):
+    def compile_model(self,num_samples):
         """compile the model generating callbacks and loss function
         Args:
             num_samples (int): Number of samples in the training set used for scheduling

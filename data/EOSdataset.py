@@ -121,6 +121,23 @@ class DataSet:
     def get_training_dataset(self):
         return self.data_frame[self.training_columns]
     
+    def generate_feature_lists(self):
+        
+        self.jet_feature_list = ['L1T_JetPuppiAK4_PT','L1T_JetPuppiAK4_Eta','L1T_JetPuppiAK4_Phi']
+        self.muon_feature_list = ['L1T_MuonTight_PT','L1T_MuonTight_Eta','L1T_MuonTight_Phi']
+        self.electron_feature_list = ['L1T_Electron_PT','L1T_Electron_Eta','L1T_Electron_Phi']
+        self.met_feature_list = ['L1T_PUPPIMET_MET','L1T_PUPPIMET_Eta','L1T_PUPPIMET_Phi']
+        self.bonus_columns = ['L1T_PFCand_PT','L1T_PUPPIPart_PT']
+        self.multiplicity_feature_list = ['jet_multiplicity','muon_multiplicity','electron_multiplicity']
+        
+        top_x_jets = [feature + str(i) for i in range(self.max_number_of_jets) for feature in self.jet_feature_list]
+        top_x_muons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.muon_feature_list ]
+        top_x_electrons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.electron_feature_list ]
+        self.all_features = self.met_feature_list +  self.multiplicity_feature_list + top_x_jets + top_x_muons + top_x_electrons
+        
+        self.training_columns =   self.met_feature_list + top_x_electrons  + top_x_muons + top_x_jets 
+        self.non_met_columns = [column for column in self.training_columns if "PT" in column ]
+    
     def load_data_from_EOS(self, filepath: str):
         starting_time = time.time()
         

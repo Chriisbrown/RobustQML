@@ -181,10 +181,10 @@ class DataSet:
                     feature_vector[offset + imuon*3 + 2] = 0
 
             offset = self.max_number_of_jets*3 + self.max_number_of_electrons*3 + self.max_number_of_muons*3
-            feature_vector[offset + 0] = dataset['L1T_PUPPIMET_MET'][ievent]
+            feature_vector[offset + 0] = dataset['L1T_PUPPIMET_MET'][ievent][0]
             feature_vector[offset + 1] = 0
-            feature_vector[offset + 2] = dataset['L1T_PUPPIMET_Phi'][ievent]
-            feature_vector[offset + 3] = dataset['Gen_MissingET_MET'][ievent]
+            feature_vector[offset + 2] = dataset['L1T_PUPPIMET_Phi'][ievent][0]
+            feature_vector[offset + 3] = dataset['Gen_MissingET_MET'][ievent][0]
             
             feature_vector[offset + 4] = len(dataset['L1T_JetPuppiAK4_PT'][ievent])
             feature_vector[offset + 5] = len(dataset['L1T_Electron_PT'][ievent])

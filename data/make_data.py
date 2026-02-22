@@ -9,10 +9,10 @@ from sklearn.model_selection import train_test_split
 
 if __name__ == "__main__":
 
-    process_folders = { 'HH_4b' :'HH_4b-NEVENT10000-RS20',
+    process_folders = { 'HH_4b' :{'prefix':'HH_4b-NEVENT10000-RS20','n_events':200},
                     #    'HH_bbgammagamma': 'HH_bbgammagamma-NEVENT10000-RS21',
                     #    'HH_bbtautau': 'HH_bbtautau-NEVENT10000-RS22',
-                         'QCD_HT50toInf': 'QCD_HT50toInf-NEVENT10000-RS26',
+                         'QCD_HT50toInf': {'prefix':'QCD_HT50toInf-NEVENT10000-RS26','n_events':500},
                     #    'tt0123j_5f_ckm_LO_MLM_hadronic':'tt0123j_5f_ckm_LO_MLM_hadronic-NEVENT10000-RS28',
                     #    'ggHgluglu':'ggHgluglu-NEVENT10000-RS16',
                     #    'ggHtautau':'ggHtautau-NEVENT10000-RS17',
@@ -24,18 +24,15 @@ if __name__ == "__main__":
                     #    'VBFHgluglu':'VBFHgluglu-NEVENT10000-RS38',
                     #    'VBFHtautau':'VBFHtautau-NEVENT10000-RS39',
                     #    'WJetsToLNu_13TeV-madgraphMLM-pythia8':'WJetsToLNu_13TeV-madgraphMLM-pythia8-NEVENT10000-RS44'
-                         'minbias': 'minbias-NEVENT10000-RS59',
-                         'upsilon_to_leptons' : 'upsilon_to_leptons-NEVENT10000-RS60'
+                         'minbias': {'prefix':'minbias-NEVENT10000-RS59','n_events':500},
+                         'upsilon_to_leptons' : {'prefix':'upsilon_to_leptons-NEVENT10000-RS60','n_events':200},
                         }
     outdir = 'training_data/'  
 
     os.makedirs(outdir, exist_ok=True)
     print("Output directory:", outdir)
     
-    
-    
-    max_files_per_process = 300
-    
+        
     test_fraction = 0.6
     
     
@@ -44,8 +41,8 @@ if __name__ == "__main__":
     for iprocess, process in tqdm(enumerate(process_folders.keys())):
         data_set_list = []
         os.makedirs(outdir + process, exist_ok=True)
-        for ifile in tqdm(range(max_files_per_process)):
-            input_file = input_directory + process + '/' + process_folders[process] + str(ifile+1).zfill(6) + '.parquet'
+        for ifile in tqdm(range(process_folders[process]['n_events'])):
+            input_file = input_directory + process + '/' + process_folders[process]['prefix'] + str(ifile+1).zfill(6) + '.parquet'
             
             data_set = DataSet.fromEOS(filepath=input_file)
             data_set_list.append(data_set)
@@ -55,12 +52,12 @@ if __name__ == "__main__":
         process_data_set.data_frame = process_data_frame
         process_test_data_set = process_data_set
 
-        train, test = train_test_split(process_data_frame.data_frame, test_size=test_fraction)
+        train, test = train_test_split(process_data_set.data_frame, test_size=test_fraction)
         process_data_set.data_frame = train
         process_test_data_set.data_frame = test
         
         process_augment_data_set = process_data_set
-        train, test = train_test_split(process_test_data_frame.data_frame, test_size=test_fraction/2)
+        train, test = train_test_split(process_test_data_set.data_frame, test_size=test_fraction/2)
         process_test_data_set.data_frame = train
         process_augment_data_set.data_frame = test
 

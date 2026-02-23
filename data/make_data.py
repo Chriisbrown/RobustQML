@@ -49,13 +49,13 @@ if __name__ == "__main__":
             data_set_list.append(data_set)
     
         process_data_frame = pd.concat([data.data_frame for data in data_set_list])
-        process_data_frame.reset_index()
+        process_data_frame.reset_index(inplace=True,drop=True)
+        
         process_data_set = DataSet(process)
-
         process_test_data_set = DataSet(process+'_test')
         process_augment_data_set = DataSet(process+'_augment')
         
-        train=process_data_frame.sample(frac=1-test_fraction,random_state=2)
+        train=process_data_frame.sample(frac=(1-test_fraction))
         test=process_data_frame.drop(train.index) 
         
         train.reset_index(inplace=True,drop=True)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         process_data_set.data_frame = train        
         process_data_set.generate_feature_lists()
         
-        test_again =test.sample(frac=test_fraction/2,random_state=2)
+        test_again =test.sample(frac=(test_fraction/2))
         augment=test.drop(test_again.index) 
         
         test_again.reset_index(inplace=True,drop=True)
@@ -75,6 +75,11 @@ if __name__ == "__main__":
         
         process_test_data_set.generate_feature_lists()
         process_augment_data_set.generate_feature_lists()
+        
+        print(process_data_frame.describe())
+        print(process_data_set.data_frame.describe())
+        print(process_test_data_set.data_frame.describe())
+        print(process_augment_data_set.data_frame.describe())
         
         process_data_set.plot_inputs(outdir+process+'/train')
         process_data_set.save_h5(outdir+process+'/train')

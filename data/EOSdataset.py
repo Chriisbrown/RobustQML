@@ -131,8 +131,8 @@ class DataSet:
         self.multiplicity_feature_list = ['jet_multiplicity','muon_multiplicity','electron_multiplicity']
         
         top_x_jets = [feature + str(i) for i in range(self.max_number_of_jets) for feature in self.jet_feature_list]
-        top_x_muons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.muon_feature_list ]
-        top_x_electrons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.electron_feature_list ]
+        top_x_muons = [feature + str(i) for i in range(self.max_number_of_muons) for feature in self.muon_feature_list ]
+        top_x_electrons = [feature + str(i) for i in range(self.max_number_of_electrons) for feature in self.electron_feature_list ]
         self.all_features = self.met_feature_list +  self.multiplicity_feature_list + top_x_jets + top_x_muons + top_x_electrons
         
         self.training_columns =   self.met_feature_list + top_x_electrons  + top_x_muons + top_x_jets 

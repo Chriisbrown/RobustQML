@@ -50,6 +50,7 @@ if __name__ == "__main__":
     
         process_data_frame = pd.concat([data.data_frame for data in data_set_list])
         process_data_frame.reset_index(inplace=True,drop=True)
+        process_data_frame.index = range(0,len(process_data_frame))
         
         process_data_set = DataSet(process)
         process_test_data_set = DataSet(process+'_test')
@@ -60,10 +61,7 @@ if __name__ == "__main__":
         
         train.reset_index(inplace=True,drop=True)
         test.reset_index(inplace=True,drop=True)
-
-        process_data_set.data_frame = train        
-        process_data_set.generate_feature_lists()
-        
+    
         test_again =test.sample(frac=(test_fraction/2))
         augment=test.drop(test_again.index) 
         
@@ -72,9 +70,14 @@ if __name__ == "__main__":
         
         process_test_data_set.data_frame = test_again
         process_augment_data_set.data_frame = augment
-        
+        process_data_set.data_frame = train  
+              
+        process_data_set.generate_feature_lists()
+        process_data_set.data_frame['index'] = range(0,len(process_data_set.data_frame))
         process_test_data_set.generate_feature_lists()
+        process_test_data_set.data_frame['index'] = range(0,len(process_test_data_set.data_frame))
         process_augment_data_set.generate_feature_lists()
+        process_augment_data_set.data_frame['index'] = range(0,len(process_augment_data_set.data_frame))
         
         print(process_data_frame.describe())
         print(process_data_set.data_frame.describe())

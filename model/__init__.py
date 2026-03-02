@@ -4,4 +4,6 @@ from model.IsolationTreeModel import IsolationTreeModel
 from model.AXOVariationalAutoEncoderModel import AXOVariationalAutoEncoderModel, AXOVAE
 from model.VICRegAutoEncoderModel import VICRegModel
 from model.ContrastiveEmbeddingModel import ContrastiveEmbeddingModel
+from model.TransformerContrastiveEmbeddingModel import TransformerContrastiveEmbeddingModel
 from model.PennyLaneAutoEncoderModel import PennyLaneQAEModel
+from model.ImprovedAutoEncoderModel import ImprovedAutoEncoderModel

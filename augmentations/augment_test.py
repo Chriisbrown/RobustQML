@@ -2,6 +2,7 @@ import os
 from argparse import ArgumentParser
 from model.common import fromFolder
 from data.EOSdataset import DataSet
+from model.gpu_utils import setup_gpu_memory_growth
 
 from plot import style
 
@@ -34,19 +35,21 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
+    setup_gpu_memory_growth()
+    
     model = fromFolder(args.output)
 
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
       
   
-    background = DataSet.fromH5('dataset/background_test')
+    background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
     if args.normalise == 'True':
       background.normalise()
     else:
-      background.max_number_of_jets = 5
-      background.max_number_of_objects = 2
-      background.max_number_of_objects = 2
+      background.max_number_of_jets = 10
+      background.max_number_of_objects = 4
+      background.max_number_of_objects = 4
       background.generate_feature_lists()
     
     training_columns = background.training_columns
@@ -56,64 +59,64 @@ if __name__ == "__main__":
       background = background.data_frame.sample(n=args.events)
     background_outputs = model.predict(background,training_columns)
     
-    background_augment = DataSet.fromH5('dataset/background_test_augmented')
+    background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/augment')
     if args.normalise == 'True':
       background_augment.normalise()
     else:
-      background_augment.max_number_of_jets = 5
-      background_augment.max_number_of_objects = 2
-      background_augment.max_number_of_objects = 2
+      background_augment.max_number_of_jets = 10
+      background_augment.max_number_of_objects = 4
+      background_augment.max_number_of_objects = 4
       background_augment.generate_feature_lists()
     
     if args.events > 0:
       background_augment = background_augment.data_frame.sample(n=args.events)
     background_augment_outputs = model.predict(background_augment,training_columns)
     
-    ato4l_augment = DataSet.fromH5('dataset/ato4l_augmented')
+    signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/augment')
     if args.normalise == 'True':
-      ato4l_augment.normalise()
+      signal_augment.normalise()
     else:
-      ato4l_augment.max_number_of_jets = 5
-      ato4l_augment.max_number_of_objects = 2
-      ato4l_augment.max_number_of_objects = 2
-      ato4l_augment.generate_feature_lists()
+      signal_augment.max_number_of_jets = 10
+      signal_augment.max_number_of_objects = 4
+      signal_augment.max_number_of_objects = 4
+      signal_augment.generate_feature_lists()
     if args.events > 0:
-      ato4l_augment = ato4l_augment.data_frame.sample(n=args.events)
-    ato4l_augment_outputs = model.predict(ato4l_augment,training_columns)
+      signal_augment = signal_augment.data_frame.sample(n=args.events)
+    signal_augment_outputs = model.predict(signal_augment,training_columns)
 
-    ato4l = DataSet.fromH5('dataset/ato4l')
+    signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/test')
     if args.normalise == 'True':
-      ato4l.normalise()
+      signal.normalise()
     else:
-      ato4l.max_number_of_jets = 5
-      ato4l.max_number_of_objects = 2
-      ato4l.max_number_of_objects = 2
-      ato4l.generate_feature_lists()
+      signal.max_number_of_jets = 10
+      signal.max_number_of_objects = 4
+      signal.max_number_of_objects = 4
+      signal.generate_feature_lists()
     if args.events > 0:
-      ato4l = ato4l.data_frame.sample(n=args.events)
-    ato4l_outputs = model.predict(ato4l,training_columns)   
+      signal = signal.data_frame.sample(n=args.events)
+    signal_outputs = model.predict(signal,training_columns)   
     
-    target_background = np.zeros(background_outputs.shape[0])
+    target_background = np.zeros(background_augment_outputs.shape[0])
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
 
-    trueVal = np.concatenate((np.ones(ato4l_augment_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
-    predVal_loss = np.concatenate((ato4l_augment_outputs, background_augment_outputs))
+    trueVal = np.concatenate((np.ones(signal_augment_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
+    predVal_loss = np.concatenate((signal_augment_outputs, background_augment_outputs))
 
     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
     auc_loss = auc(fpr_loss, tpr_loss)
                 
-    plt.plot(fpr_loss, tpr_loss, "-", label='ato4l augment'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[0])
+    plt.plot(fpr_loss, tpr_loss, "-", label='signal augment'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[0])
     
-    
-    trueVal = np.concatenate((np.ones(ato4l_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
-    predVal_loss = np.concatenate((ato4l_outputs, background_outputs))
+    target_background = np.zeros(background_outputs.shape[0])
+    trueVal = np.concatenate((np.ones(signal_outputs.shape[0]), target_background)) # anomaly=1, bkg=0
+    predVal_loss = np.concatenate((signal_outputs, background_outputs))
 
     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
     auc_loss = auc(fpr_loss, tpr_loss)
                 
-    plt.plot(fpr_loss, tpr_loss, "-", label='ato4l'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[1])
+    plt.plot(fpr_loss, tpr_loss, "-", label='signal'+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[1])
             
     ax.semilogx()
     ax.semilogy()
@@ -127,15 +130,15 @@ if __name__ == "__main__":
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
     plt.close() 
     
-    efficiency_out = efficiency(type(model).__name__,'ato4l',ato4l_outputs)        
+    efficiency_out = efficiency(type(model).__name__,'signal',signal_outputs)        
     minbias_rates = rates(type(model).__name__,'background',background_outputs)
     
-    augment_efficiency_out = efficiency(type(model).__name__,'ato4l_augmented',ato4l_augment_outputs)        
+    augment_efficiency_out = efficiency(type(model).__name__,'signal_augmented',signal_augment_outputs)        
     augment_minbias_rates = rates(type(model).__name__,'background_augmented',background_augment_outputs)
     
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    ax.plot(minbias_rates,efficiency_out, label='ato4l', linewidth=style.LINEWIDTH,color=style.colours[0])
-    ax.plot(augment_minbias_rates,augment_efficiency_out, label='ato4l augmented', linewidth=style.LINEWIDTH,color=style.colours[1])
+    ax.plot(minbias_rates,efficiency_out, label='signal', linewidth=style.LINEWIDTH,color=style.colours[0])
+    ax.plot(augment_minbias_rates,augment_efficiency_out, label='signal augmented', linewidth=style.LINEWIDTH,color=style.colours[1])
     
     ax.grid(True)
     ax.set_ylabel('Signal Efficiency')
@@ -150,8 +153,8 @@ if __name__ == "__main__":
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
     
     
-    plot_histo([background_outputs,background_augment_outputs,ato4l_outputs,ato4l_augment_outputs], 
-               ['background','Augmented background','ato4l','Augmented ato4l'], 
+    plot_histo([background_outputs,background_augment_outputs,signal_outputs,signal_augment_outputs], 
+               ['background','Augmented background','signal','Augmented signal'], 
                '', 
                'AnomalyScore', 
                'a.u.', 

@@ -6,5 +6,12 @@ run_config :
 
 model_config :
   name : IsolationTree
+  n_estimators : 50
+  max_depth : 32
+  min_examples : 3
+  split_axis : SPARSE_OBLIQUE
+  sparse_oblique_weights : BINARY
+  sparse_oblique_projection_density_factor : 5.0
+  random_seed : 123456
 
 training_config :

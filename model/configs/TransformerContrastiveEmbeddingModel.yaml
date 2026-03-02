@@ -1,20 +1,29 @@
-model: ContrastiveEmbeddingModel
+model: TransformerContrastiveEmbeddingModel
 run_config :
   verbose : 2
   debug : True
   num_threads : 64
 
 model_config :
-  name : ContrastiveModel
+  name : TransformerContrastiveModel
   projection_dim : 8
   projection_blocks : 3
+  num_heads : 4
+  num_layers : 2
+  ff_dim : 64
+  embed_dim : 32
+  dropout_rate : 0.1
   backbone_layers : [32,16]
   latent_dim : 4
   encoder_layers : [8,6]
   decoder_layers : [6,8]
+  num_jets : 10
+  num_muons : 4
+  num_electrons : 4
+  use_positional_embeddings : True
 
 training_config :
-  constrastive_epochs : 2
+  contrastive_epochs : 2
   epochs : 20
   batch_size : 64
   emb_learning_rate : 0.001
@@ -30,3 +39,4 @@ training_config :
 
   embedding_loss : 'SimCLR'
   #embedding_loss : 'VICReg'
+  #embedding_loss : 'SupSimCLR'

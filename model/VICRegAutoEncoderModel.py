@@ -52,14 +52,29 @@ class PerObjectMaskingLayer(keras.layers.Layer):
 
     def call(self, inputs):
         input_shape = inputs.shape
-        total_object = int(inputs.shape[0] / 3)
-        inputs = tf.reshape(inputs,(total_object,3))
-        mask = np.random.rand(inputs.shape[0],inputs.shape[1])
+        total_object = inputs.shape[0] // 3
+        remainder = inputs.shape[0] % 3
+        
+        if remainder != 0:
+            padded_length = total_object * 3
+            inputs_trimmed = inputs[:padded_length]
+            remainder_part = inputs[padded_length:]
+        else:
+            inputs_trimmed = inputs
+            remainder_part = tf.constant([], dtype=inputs.dtype)
+            
+        inputs_trimmed = tf.reshape(inputs_trimmed, (total_object, 3))
+        mask = np.random.rand(inputs_trimmed.shape[0], inputs_trimmed.shape[1])
         idx = mask < self.probability
         mask[idx] = 0
         mask[~idx] = 1
-        inputs = inputs * mask
-        inputs = tf.reshape(inputs,input_shape)
+        inputs_trimmed = inputs_trimmed * mask
+        inputs_trimmed = tf.reshape(inputs_trimmed, (total_object * 3,))
+        
+        if remainder > 0:
+            inputs = tf.concat([inputs_trimmed, remainder_part], axis=0)
+        else:
+            inputs = inputs_trimmed
         return inputs
     
 class PhiRotationLayer(keras.layers.Layer):

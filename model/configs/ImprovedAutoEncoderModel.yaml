@@ -1,0 +1,27 @@
+model: ImprovedAutoEncoderModel
+run_config :
+  verbose : 2
+  debug : True
+  num_threads : 64
+
+model_config :
+  name : improved_autoencoder
+  encoder_layers : [32, 16, 8]
+  decoder_layers : [8, 16, 32]
+  latent_dim: 8
+  
+  dropout_rate : 0.3
+  l2_reg : 0.001
+  use_batch_norm : True
+
+training_config :
+  epochs : 80
+  batch_size : 256
+  learning_rate : 0.001
+  validation_split : 0.1
+
+  EarlyStopping_patience : 15
+
+  ReduceLROnPlateau_factor : 0.5
+  ReduceLROnPlateau_patience : 5
+  ReduceLROnPlateau_min_lr : 0.00001

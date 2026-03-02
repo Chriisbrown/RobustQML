@@ -2,6 +2,7 @@ import os
 from argparse import ArgumentParser
 from model.common import fromFolder
 from data.EOSdataset import DataSet
+from model.gpu_utils import setup_gpu_memory_growth
 
 from plot import style
 
@@ -34,17 +35,19 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
+    setup_gpu_memory_growth()
+    
     model = fromFolder(args.output)
 
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
     
-    background = DataSet.fromH5('training_data/minbias')
+    background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
     
     if args.normalise == 'True':
         background.normalise()
     else:
-        background.max_number_of_jets = 5
+        background.max_number_of_jets = 10
         background.max_number_of_objects = 4
         background.max_number_of_objects = 4
         background.generate_feature_lists()
@@ -58,17 +61,17 @@ if __name__ == "__main__":
     
     #output_dict = {"background" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
     #output_dict = {"background_test" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
-    output_dict = {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "upsilon_to_leptons" : {}}
+    output_dict = {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, 'HH_bbgammagamma':{},'HH_bbtautau':{},'QCD_HT50tobb':{}}
     
     for datasets in output_dict.keys():
-        data_test = DataSet.fromH5('training_data/'+datasets)
+        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
         if args.normalise == 'True':
             data_test.normalise()
             max_jet_pt = 1
         else:
-            data_test.max_number_of_jets = 5
-            data_test.max_number_of_objects = 2
-            data_test.max_number_of_objects = 2
+            data_test.max_number_of_jets = 10
+            data_test.max_number_of_objects = 4
+            data_test.max_number_of_objects = 4
             data_test.generate_feature_lists()
         if args.events > 0:
             data_test = data_test.data_frame.sample(n=args.events)
@@ -144,7 +147,7 @@ if __name__ == "__main__":
     plt.close() 
     
     
-    if model.encoder_predict(background,training_columns) != None:
+    if model.encoder_predict(background,training_columns) is not None:
     
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
         for i,datasets in enumerate(output_dict.keys()):
@@ -159,7 +162,7 @@ if __name__ == "__main__":
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
         plt.close() 
         
-    if model.var_predict(background,training_columns) != None:
+    if model.var_predict(background,training_columns) is not None:
     
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
         for i,datasets in enumerate(output_dict.keys()):
@@ -205,11 +208,11 @@ if __name__ == "__main__":
     #labels = {"background" : 0, "VBFHcc" :1, "ggHbb" : 2, "QCDbb" : 3, "HH4b" : 4, "QCD": 5}
     #labels = {"background_test" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
     
-    labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'upsilon_to_leptons':3}
+    labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
     
     dataset_list = []
     for datasets in output_dict.keys():
-        data_test = DataSet.fromH5('training_data/'+datasets)
+        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
         if args.normalise == 'True':
             data_test.normalise()
         else:

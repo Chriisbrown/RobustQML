@@ -53,13 +53,32 @@ class IsolationTreeModel(ADModel):
         Args:
             train (DataSet): train dataset
         """
-        self.AD_model = ydf.IsolationForestLearner(features=training_features,
-                                                   num_trees=1000,
-                                                   split_axis='SPARSE_OBLIQUE',
-                                                   sparse_oblique_weights='CONTINUOUS',
-                                                   sparse_oblique_projection_density_factor=5.0,
-                                                   max_depth=-1
-                                                   ).train(X_train)
+        
+        num_trees = self.model_config.get('n_estimators', 50)
+        max_depth = self.model_config.get('max_depth', -1)
+        min_examples = self.model_config.get('min_examples', 5)
+        split_axis = self.model_config.get('split_axis', 'SPARSE_OBLIQUE')
+        random_seed = self.model_config.get('random_seed', 123456)
+        
+        if isinstance(X_train, DataSet):
+            train_df = X_train.data_frame
+        else:
+            train_df = X_train
+        
+        learner_kwargs = {
+            'features': training_features,
+            'num_trees': num_trees,
+            'max_depth': max_depth,
+            'min_examples': min_examples,
+            'split_axis': split_axis,
+            'random_seed': random_seed
+        }
+        
+        if split_axis == 'SPARSE_OBLIQUE':
+            learner_kwargs['sparse_oblique_weights'] = self.model_config.get('sparse_oblique_weights', 'CONTINUOUS')
+            learner_kwargs['sparse_oblique_projection_density_factor'] = self.model_config.get('sparse_oblique_projection_density_factor', 5.0)
+        
+        self.AD_model = ydf.IsolationForestLearner(**learner_kwargs).train(train_df)
         
 
     def predict(self, X_test: DataSet, training_columns) -> npt.NDArray[np.float64]:

@@ -516,7 +516,7 @@ class ContrastiveEmbeddingModel(ADModel):
         x_logit = self.vae_model.decode(z)
         ad_scores = tf.keras.losses.mse(x_logit,x_latent)
         ad_scores = ad_scores._numpy()
-        ad_scores = mu2
+        #ad_scores = mu2
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores

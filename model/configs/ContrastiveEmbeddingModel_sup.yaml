@@ -8,13 +8,13 @@ model_config :
   name : ContrastiveModel
   projection_dim : 8
   projection_blocks : 4
-  backbone_layers : [64,256]
-  latent_dim : 2
-  encoder_layers : [64,32]
-  decoder_layers : [32,64]
+  backbone_layers : [32,16]
+  latent_dim : 4
+  encoder_layers : [8,6]
+  decoder_layers : [6,8]
 
 training_config :
-  constrastive_epochs : 20
+  constrastive_epochs : 2
   epochs : 20
   batch_size : 64
   emb_learning_rate : 0.001

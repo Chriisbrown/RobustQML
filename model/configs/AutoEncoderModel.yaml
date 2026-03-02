@@ -6,14 +6,14 @@ run_config :
 
 model_config :
   name : autoencoder
-  encoder_layers : [32,16]
-  decoder_layers : [16,32]
+  encoder_layers : [32,16,8]
+  decoder_layers : [8,16,32]
   latent_dim: 8
 
 training_config :
-  epochs : 40
-  batch_size : 2560
-  learning_rate : 0.001
+  epochs : 80
+  batch_size : 256
+  learning_rate : 0.005
   validation_split : 0.1
 
   EarlyStopping_patience : 10

@@ -14,8 +14,8 @@ model_config :
   decoder_layers : [6,8]
 
 training_config :
-  constrastive_epochs : 2
-  epochs : 20
+  constrastive_epochs : 5
+  epochs : 10
   batch_size : 64
   emb_learning_rate : 0.001
   learning_rate : 0.001

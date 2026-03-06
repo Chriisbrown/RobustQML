@@ -26,6 +26,10 @@ python train/train.py -y model/configs/ContrastiveEmbeddingModel_sup.yaml -o out
 python plot/test.py -o output/ContrastiveEmbedding_sup
 python augmentations/augment_test.py -o output/ContrastiveEmbedding_sup
 
+python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o output/TransformerContrastiveEmbedding
+python plot/test.py -o output/TransformerContrastiveEmbedding
+python augmentations/augment_test.py -o output/TransformerContrastiveEmbedding
+
 python train/train.py -y model/configs/PennyLaneQAEModel.yaml -o output/qae -n False
 python plot/test.py -o output/qae -n False -e 1000
 python augmentations/augment_test.py -o output/qae -n False -e 1000

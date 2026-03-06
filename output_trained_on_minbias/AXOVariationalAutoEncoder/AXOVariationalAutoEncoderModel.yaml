@@ -1,19 +1,16 @@
-model: VariationalAutoEncoderModel
+model: AXOVariationalAutoEncoderModel
 run_config :
   verbose : 2
   debug : True
   num_threads : 64
 
 model_config :
-  name : variationalautoencoder
-  latent_dim : 8
-  encoder_layers : [32,16,8]
-  decoder_layers : [8,16,32]
+  name : axovae
 
 training_config :
   epochs : 10
   batch_size : 256
-  learning_rate : 0.005
+  learning_rate : 0.00001
   validation_split : 0.1
 
   EarlyStopping_patience : 10

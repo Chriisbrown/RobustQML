@@ -55,9 +55,9 @@ class PennyLaneQAEModel(ADModel):
     def __init__(self,output_dir):
         super().__init__(output_dir)
     
-        self.number_of_jets = 10
-        self.number_of_muons = 4
-        self.number_of_electrons = 4
+        self.number_of_jets = 8
+        self.number_of_muons = 3
+        self.number_of_electrons = 3
         
         self.jet_indices = 0,self.number_of_jets
         self.muon_indices = self.jet_indices[1] ,self.jet_indices[1] + self.number_of_muons
@@ -80,7 +80,7 @@ class PennyLaneQAEModel(ADModel):
         self.t_wires = [f"t{i}" for i in range(nt)]
         self.a_wire = "a"
                 
-        self.dev = qml.device("lightning.qubit", wires=self.q_wires + self.t_wires + [self.a_wire])
+        self.dev = qml.device("lightning.gpu", wires=self.q_wires + self.t_wires + [self.a_wire])
         @qml.set_shots(shots=None)
         @qml.qnode(self.dev)
         def circuit(weights , x1, x2 ,return_projector=False):
@@ -133,34 +133,34 @@ class PennyLaneQAEModel(ADModel):
         self.circuit = circuit
 
     def autoencoder(self,circuit_weights, normalisation_weight, x1,x2):
-        #theta = np.zeros_like(x1)
-        #phi = np.zeros_like(x2)
+        theta = np.zeros_like(x1)
+        phi = np.zeros_like(x2)
         # normalisation weight feature specific, 0-4 jets, 5-8 muons, 9-12 electrons, 13 sums
         
-        #f_jets = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[0]))    
-        # f_muons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[1]))    
-        # f_electrons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[2]))    
+        f_jets = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[0]))    
+        f_muons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[1]))    
+        f_electrons = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[2]))    
         #f_sums = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight[3]))    
         
-        # theta_jets = f_jets * x1[self.jet_indices[0]:self.jet_indices[1]]
-        # phi_jets = f_jets * x2[self.jet_indices[0]:self.jet_indices[1]]
+        theta_jets = f_jets * x1[self.jet_indices[0]:self.jet_indices[1]]
+        phi_jets = f_jets * x2[self.jet_indices[0]:self.jet_indices[1]]
         
-        # theta_muons = f_muons * x1[self.muon_indices[0]:self.muon_indices[1]]
-        # phi_muons = f_muons * x2[self.muon_indices[0]:self.muon_indices[1]]
+        theta_muons = f_muons * x1[self.muon_indices[0]:self.muon_indices[1]]
+        phi_muons = f_muons * x2[self.muon_indices[0]:self.muon_indices[1]]
         
-        # theta_electons = f_electrons * x1[self.electron_indices[0]:self.electron_indices[1]]
-        # phi_electons = f_electrons * x2[self.electron_indices[0]:self.electron_indices[1]]
+        theta_electons = f_electrons * x1[self.electron_indices[0]:self.electron_indices[1]]
+        phi_electons = f_electrons * x2[self.electron_indices[0]:self.electron_indices[1]]
         
-        #theta_sums = np.expand_dims(f_sums * x1[self.sum_indices],axis=0)
-        #phi_sums = np.expand_dims(f_sums * x2[self.sum_indices],axis=0)
+        # theta_sums = np.expand_dims(f_sums * x1[self.sum_indices],axis=0)
+        # phi_sums = np.expand_dims(f_sums * x2[self.sum_indices],axis=0)
          
-        #theta = np.concatenate((theta_jets,theta_muons,theta_electons))
-        #phi = np.concatenate((phi_jets,phi_muons,phi_electons))
+        theta = np.concatenate((theta_jets,theta_muons,theta_electons))
+        phi = np.concatenate((phi_jets,phi_muons,phi_electons))
         
-        f = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight))    
-        
-        theta = f * x1
-        phi = f * x2
+        #f = 1 + 2*np.pi / (1 + np.exp(-normalisation_weight))    
+        #f =  7.268
+        # theta = f * x1
+        # phi = f * x2
         
         return self.circuit(circuit_weights, theta,phi,return_projector=True)
 
@@ -168,6 +168,7 @@ class PennyLaneQAEModel(ADModel):
         predictions = 0
         for ievent in range(len(x1)):
             single_value_predict = (self.autoencoder(circuit_weights, normalisation_weight, x1[ievent],x2[ievent]))
+            print(single_value_predict)
             predictions += qml.math.mean(single_value_predict)
         return predictions / len(x1)
 
@@ -444,7 +445,22 @@ class PennyLaneQAEModel(ADModel):
         plt.savefig(self.output_directory+'/plots/training/pt_tot.png')
 
         circuit_weights_init = 0.01 * np.random.randn(self.nq*4, requires_grad=True)
-        normalisation_weight_init = np.zeros(1, requires_grad=True)
+#         circuit_weights_init = np.array([-1.78701713e-02,  1.12183806e+00 ,-1.12317839e+00 , 4.51743327e-03,
+#  -1.80150576e+00 ,-1.90803121e+00 ,-5.82045623e-02,  1.51434031e-02,
+#   8.08914133e-01 ,-4.47950814e-02 , 2.62302679e+00,  7.95021828e-01,
+#   1.97033676e-01 ,-4.28273399e-04 , 1.14475236e-01, -1.13499681e-01,
+#   1.19325813e-01 , 5.27118002e-02 , 1.11445759e-01, -1.32340811e-01,
+#   5.47701647e-02 ,-8.74766845e-03 , 1.23993099e-01,  9.78236834e-02,
+#  -7.67000097e-04 , 1.12148266e-01 , 5.58428654e-03, -4.71657177e+00,
+#  -1.57725678e+00 ,-1.57595338e+00 , 1.57521228e+00,  1.56312986e+00,
+#   1.57814337e+00 , 1.55999241e+00 , 4.78260978e+00, -1.56770052e+00,
+#   1.57694829e+00 ,-1.15582764e+00 ,-1.56319642e+00,  4.68298511e-03,
+#   1.15005842e-01 , 1.13149498e-01 ,-1.19306697e-01,  5.26994141e-02,
+#   1.11448703e-01 ,-1.32345391e-01 , 5.48160190e-02,  8.48045882e-03,
+#  -1.23863605e-01 , 9.74937748e-02 , 4.37766138e-04 ,-1.16668866e-01],requires_grad=True)
+        #normalisation_weight_init = np.zeros(1, requires_grad=True)
+        normalisation_weight_init = np.array([6.0,6.0,6.0],requires_grad=True)
+        #print('factor:',1 + 2*np.pi / (1 + np.exp(-normalisation_weight_init))  )
                 
         self.circuit_weights = circuit_weights_init
         self.normalisation_weight = normalisation_weight_init
@@ -455,7 +471,12 @@ class PennyLaneQAEModel(ADModel):
         val_cost = []
         val_batch_index = np.random.choice(uniform_sample_pt, self.training_config['batch_size'])
         
+        print(qml.specs(self.circuit)(circuit_weights_init, old_x1[0],old_x2[0],return_projector=True ))
+        
         for it in range(self.training_config['epochs']):
+            
+            if it % 10 == 0 and it != 0:
+                self.opt.learning_rate = self.opt.learning_rate / 2
 
             # Update the weights by one optimizer step, using only a limited batch of data
             batch_index = np.random.choice(uniform_sample_pt, (self.batch_size,))
@@ -520,6 +541,7 @@ class PennyLaneQAEModel(ADModel):
         """
         
         self.build_model(len(training_columns))
+        print(len(training_columns))
         pt_columns = []
         for column in training_columns:
             if ("PT" in column) :
@@ -556,7 +578,7 @@ class PennyLaneQAEModel(ADModel):
         for ievent in range(len(x1)):
             predictions.append(qml.math.mean(self.autoencoder(self.circuit_weights, self.normalisation_weight, x1[ievent], x2[ievent] )))
         ad_scores = np.array(predictions ) 
-        ad_scores = ad_scores / 0.5
+        ad_scores = 1 - ad_scores/0.5
         return ad_scores
     
     

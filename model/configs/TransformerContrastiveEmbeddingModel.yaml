@@ -23,11 +23,11 @@ model_config :
   use_positional_embeddings : True
 
 training_config :
-  contrastive_epochs : 2
+  contrastive_epochs : 10
   epochs : 20
   batch_size : 64
-  emb_learning_rate : 0.001
-  learning_rate : 0.001
+  emb_learning_rate : 0.0001
+  learning_rate : 0.0001
   validation_split : 0.1
   emb_learning_rate_decay : 0.000001
 

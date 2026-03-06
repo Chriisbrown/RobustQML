@@ -14,16 +14,16 @@ def train(model ,normalise):
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
     
     #labels = {"QCD": 0, 'QCDbb':1}
-    labels = {"minbias":1}
+    labels = {"QCD_HT50toInf":1}
     dataset_list = []
     for datasets in labels.keys():
         data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/train/')
         if normalise == "True":
             data_test.normalise()
         else:
-            data_test.max_number_of_jets = 5
-            data_test.max_number_of_objects = 2
-            data_test.max_number_of_objects = 2
+            data_test.max_number_of_jets = 8
+            data_test.max_number_of_electrons = 3
+            data_test.max_number_of_muons = 3
             data_test.generate_feature_lists()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)

@@ -13,7 +13,7 @@ if __name__ == "__main__":
                         #'HH_bbgammagamma': {'prefix':'HH_bbgammagamma-NEVENT10000-RS21','n_events':200},
                         #'HH_bbtautau': {'prefix':'HH_bbtautau-NEVENT10000-RS22','n_events':200},
                         #'QCD_HT50toInf': {'prefix':'QCD_HT50toInf-NEVENT10000-RS26','n_events':5000},
-                        'QCD_HT50tobb':{'prefix':'QCD_HT50tobb-NEVENT10000-RS25','n_events':200},
+                        #'QCD_HT50tobb':{'prefix':'QCD_HT50tobb-NEVENT10000-RS25','n_events':200},
                     #    'tt0123j_5f_ckm_LO_MLM_hadronic':'tt0123j_5f_ckm_LO_MLM_hadronic-NEVENT10000-RS28',
                     #    'ggHgluglu':'ggHgluglu-NEVENT10000-RS16',
                     #    'ggHtautau':'ggHtautau-NEVENT10000-RS17',
@@ -29,7 +29,7 @@ if __name__ == "__main__":
                     #     'upsilon_to_leptons' : {'prefix':'upsilon_to_leptons-NEVENT10000-RS60','n_events':200},
                         }
     #outdir = 'training_data/'  
-    outdir = '/eos/user/c/cebrown/RobustQML/training_data'  
+    outdir = '/eos/user/c/cebrown/RobustQML/training_data/'  
 
     os.makedirs(outdir, exist_ok=True)
     print("Output directory:", outdir)

@@ -47,9 +47,9 @@ if __name__ == "__main__":
     if args.normalise == 'True':
         background.normalise()
     else:
-        background.max_number_of_jets = 10
-        background.max_number_of_objects = 4
-        background.max_number_of_objects = 4
+        background.max_number_of_jets = 8
+        background.max_number_of_objects = 3
+        background.max_number_of_objects = 3
         background.generate_feature_lists()
     
     training_columns = background.training_columns
@@ -69,10 +69,11 @@ if __name__ == "__main__":
             data_test.normalise()
             max_jet_pt = 1
         else:
-            data_test.max_number_of_jets = 10
-            data_test.max_number_of_objects = 4
-            data_test.max_number_of_objects = 4
+            data_test.max_number_of_jets = 8
+            data_test.max_number_of_electrons= 3
+            data_test.max_number_of_muons = 3
             data_test.generate_feature_lists()
+            max_jet_pt = 1000
         if args.events > 0:
             data_test = data_test.data_frame.sample(n=args.events)
         else:
@@ -216,9 +217,9 @@ if __name__ == "__main__":
         if args.normalise == 'True':
             data_test.normalise()
         else:
-            data_test.max_number_of_jets = 5
-            data_test.max_number_of_objects = 4
-            data_test.max_number_of_objects = 4
+            data_test.max_number_of_jets = 8
+            data_test.max_number_of_objects = 3
+            data_test.max_number_of_objects = 3
             data_test.generate_feature_lists()
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)

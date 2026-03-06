@@ -47,9 +47,9 @@ if __name__ == "__main__":
     if args.normalise == 'True':
       background.normalise()
     else:
-      background.max_number_of_jets = 10
-      background.max_number_of_objects = 4
-      background.max_number_of_objects = 4
+      background.max_number_of_jets = 5
+      background.max_number_of_objects = 2
+      background.max_number_of_objects = 2
       background.generate_feature_lists()
     
     training_columns = background.training_columns
@@ -63,9 +63,9 @@ if __name__ == "__main__":
     if args.normalise == 'True':
       background_augment.normalise()
     else:
-      background_augment.max_number_of_jets = 10
-      background_augment.max_number_of_objects = 4
-      background_augment.max_number_of_objects = 4
+      background_augment.max_number_of_jets = 5
+      background_augment.max_number_of_objects = 2
+      background_augment.max_number_of_objects = 2
       background_augment.generate_feature_lists()
     
     if args.events > 0:
@@ -76,9 +76,9 @@ if __name__ == "__main__":
     if args.normalise == 'True':
       signal_augment.normalise()
     else:
-      signal_augment.max_number_of_jets = 10
-      signal_augment.max_number_of_objects = 4
-      signal_augment.max_number_of_objects = 4
+      signal_augment.max_number_of_jets = 5
+      signal_augment.max_number_of_objects = 2
+      signal_augment.max_number_of_objects = 2
       signal_augment.generate_feature_lists()
     if args.events > 0:
       signal_augment = signal_augment.data_frame.sample(n=args.events)
@@ -88,9 +88,9 @@ if __name__ == "__main__":
     if args.normalise == 'True':
       signal.normalise()
     else:
-      signal.max_number_of_jets = 10
-      signal.max_number_of_objects = 4
-      signal.max_number_of_objects = 4
+      signal.max_number_of_jets = 5
+      signal.max_number_of_objects = 2
+      signal.max_number_of_objects = 2
       signal.generate_feature_lists()
     if args.events > 0:
       signal = signal.data_frame.sample(n=args.events)

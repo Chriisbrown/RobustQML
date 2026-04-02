@@ -16,7 +16,7 @@ model_config :
 
 training_config :
   epochs : 80
-  batch_size : 256
+  batch_size : 2560
   learning_rate : 0.001
   validation_split : 0.1
 

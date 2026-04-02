@@ -28,10 +28,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '-e', '--events', default=-1, type=int,help='Number of the test set events to run over'
     )
-    
-    parser.add_argument(
-        '-n', '--normalise', default='True', help='Normalise the input data?'
-    )
+
 
     args = parser.parse_args()
     
@@ -43,20 +40,14 @@ if __name__ == "__main__":
     os.makedirs(plot_dir, exist_ok=True)
     
     background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
-    
-    if args.normalise == 'True':
-        background.normalise()
-    else:
-        background.max_number_of_jets = 8
-        background.max_number_of_objects = 3
-        background.max_number_of_objects = 3
-        background.generate_feature_lists()
-    
+    background.normalise()
+
     training_columns = background.training_columns
 
     if args.events > 0:
         background = background.data_frame.sample(n=args.events)
     background_outputs = model.predict(background,training_columns)
+    print(background_outputs)
     background_rates = rates(type(model).__name__,'minbias',background_outputs)
     
     #output_dict = {"background" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
@@ -65,20 +56,15 @@ if __name__ == "__main__":
     
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
-        if args.normalise == 'True':
-            data_test.normalise()
-            max_jet_pt = 1
-        else:
-            data_test.max_number_of_jets = 8
-            data_test.max_number_of_electrons= 3
-            data_test.max_number_of_muons = 3
-            data_test.generate_feature_lists()
-            max_jet_pt = 1000
+        data_test.normalise()
+        max_jet_pt = 1
+
         if args.events > 0:
             data_test = data_test.data_frame.sample(n=args.events)
         else:
             data_test = data_test.data_frame.sample(frac=1.0)
         model_outputs = model.predict(data_test,training_columns)
+        print(model_outputs)
         efficiency_out = efficiency(type(model).__name__,datasets,model_outputs)
         output_dict[datasets] = {'predictions' : model_outputs,'efficiencies' : efficiency_out,'dataset':data_test}
         plot_2d(data_test['L1T_JetPuppiAK4_PT0'], model_outputs, (0,max_jet_pt), (0,1), 'Leading Jet pT', 'model predictions', 'leading jet pT dependence for '+datasets)
@@ -214,18 +200,13 @@ if __name__ == "__main__":
     dataset_list = []
     for datasets in output_dict.keys():
         data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
-        if args.normalise == 'True':
-            data_test.normalise()
-        else:
-            data_test.max_number_of_jets = 8
-            data_test.max_number_of_objects = 3
-            data_test.max_number_of_objects = 3
-            data_test.generate_feature_lists()
+        data_test.normalise()
+
         data_test.set_label(labels[datasets])
         dataset_list.append(data_test)
        
     if args.events > 0: 
-        full_data_frame = pd.concat([dataset.data_frame.sample(n=args.events*6) for dataset in dataset_list])
+        full_data_frame = pd.concat([dataset.data_frame.sample(n=args.events) for dataset in dataset_list])
     else:
         full_data_frame = pd.concat([dataset.data_frame.sample(n=5000) for dataset in dataset_list])
     full_data_frame = full_data_frame.sample(frac=1)

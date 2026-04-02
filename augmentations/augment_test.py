@@ -26,10 +26,6 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        '-n', '--normalise', default='True', help='Normalise the input data?'
-    )
-    
-    parser.add_argument(
         '-e', '--events', default=-1, type=int,help='Number of the test set events to run over'
     )
 
@@ -44,14 +40,8 @@ if __name__ == "__main__":
       
   
     background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
-    if args.normalise == 'True':
-      background.normalise()
-    else:
-      background.max_number_of_jets = 5
-      background.max_number_of_objects = 2
-      background.max_number_of_objects = 2
-      background.generate_feature_lists()
-    
+    background.normalise()
+
     training_columns = background.training_columns
 
 
@@ -60,38 +50,23 @@ if __name__ == "__main__":
     background_outputs = model.predict(background,training_columns)
     
     background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/augment')
-    if args.normalise == 'True':
-      background_augment.normalise()
-    else:
-      background_augment.max_number_of_jets = 5
-      background_augment.max_number_of_objects = 2
-      background_augment.max_number_of_objects = 2
-      background_augment.generate_feature_lists()
+    background_augment.normalise()
+
     
     if args.events > 0:
       background_augment = background_augment.data_frame.sample(n=args.events)
     background_augment_outputs = model.predict(background_augment,training_columns)
     
     signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/augment')
-    if args.normalise == 'True':
-      signal_augment.normalise()
-    else:
-      signal_augment.max_number_of_jets = 5
-      signal_augment.max_number_of_objects = 2
-      signal_augment.max_number_of_objects = 2
-      signal_augment.generate_feature_lists()
+    signal_augment.normalise()
+
     if args.events > 0:
       signal_augment = signal_augment.data_frame.sample(n=args.events)
     signal_augment_outputs = model.predict(signal_augment,training_columns)
 
     signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/test')
-    if args.normalise == 'True':
-      signal.normalise()
-    else:
-      signal.max_number_of_jets = 5
-      signal.max_number_of_objects = 2
-      signal.max_number_of_objects = 2
-      signal.generate_feature_lists()
+    signal.normalise()
+
     if args.events > 0:
       signal = signal.data_frame.sample(n=args.events)
     signal_outputs = model.predict(signal,training_columns)   

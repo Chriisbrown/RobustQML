@@ -12,7 +12,7 @@ if __name__ == "__main__":
     process_folders = { #'HH_4b' :{'prefix':'HH_4b-NEVENT10000-RS20','n_events':200},
                         #'HH_bbgammagamma': {'prefix':'HH_bbgammagamma-NEVENT10000-RS21','n_events':200},
                         #'HH_bbtautau': {'prefix':'HH_bbtautau-NEVENT10000-RS22','n_events':200},
-                        #'QCD_HT50toInf': {'prefix':'QCD_HT50toInf-NEVENT10000-RS26','n_events':5000},
+                        'QCD_HT50toInf': {'prefix':'QCD_HT50toInf-NEVENT10000-RS26','n_events':5000},
                         #'QCD_HT50tobb':{'prefix':'QCD_HT50tobb-NEVENT10000-RS25','n_events':200},
                     #    'tt0123j_5f_ckm_LO_MLM_hadronic':'tt0123j_5f_ckm_LO_MLM_hadronic-NEVENT10000-RS28',
                     #    'ggHgluglu':'ggHgluglu-NEVENT10000-RS16',
@@ -25,7 +25,7 @@ if __name__ == "__main__":
                     #    'VBFHgluglu':'VBFHgluglu-NEVENT10000-RS38',
                     #    'VBFHtautau':'VBFHtautau-NEVENT10000-RS39',
                     #    'WJetsToLNu_13TeV-madgraphMLM-pythia8':'WJetsToLNu_13TeV-madgraphMLM-pythia8-NEVENT10000-RS44'
-                         'minbias': {'prefix':'minbias-NEVENT10000-RS59','n_events':5000},
+                        # 'minbias': {'prefix':'minbias-NEVENT10000-RS59','n_events':5000},
                     #     'upsilon_to_leptons' : {'prefix':'upsilon_to_leptons-NEVENT10000-RS60','n_events':200},
                         }
     #outdir = 'training_data/'  

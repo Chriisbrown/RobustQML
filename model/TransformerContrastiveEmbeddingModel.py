@@ -571,7 +571,7 @@ class TransformerContrastiveEmbeddingModel(ADModel):
             test = X_test
         
         x = tf.cast(test, tf.float32)
-        x_latent = self.transformer_model.call(x, training=False)
+        x_latent = self.transformer_model.predict(x)
         mean, logvar = self.vae_model.encode(x_latent)
         mu2 = np.linalg.norm(mean, axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
@@ -588,7 +588,7 @@ class TransformerContrastiveEmbeddingModel(ADModel):
     def distance(self, test, training_columns):
         """Compute distance between input and reconstruction"""
         x_hat = self.predict(test, training_columns, return_score=False)
-        x_latent = self.transformer_model.call(test)
+        x_latent = self.transformer_model.predict(test)
         return pairwise_distances(x_latent, x_hat)
 
     def encoder_predict(self, X_test, training_columns) -> npt.NDArray[np.float64]:
@@ -601,7 +601,7 @@ class TransformerContrastiveEmbeddingModel(ADModel):
             test = X_test
         
         x = tf.cast(test, tf.float32)
-        latent = self.transformer_model.call(x, training=False)
+        latent = self.transformer_model.predict(x)
         return latent
 
     def var_predict(self, X_test, training_columns) -> npt.NDArray[np.float64]:
@@ -614,7 +614,7 @@ class TransformerContrastiveEmbeddingModel(ADModel):
             test = X_test
         
         x = tf.cast(test, tf.float32)
-        x_latent = self.transformer_model.call(x, training=False)
+        x_latent = self.transformer_model.predict(x)
         mean, logvar = self.vae_model.encode(x_latent)
         return mean, logvar
 

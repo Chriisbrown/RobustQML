@@ -14,7 +14,7 @@ model_config :
   embed_dim : 32
   dropout_rate : 0.1
   backbone_layers : [32,16]
-  latent_dim : 4
+  latent_dim : 8
   encoder_layers : [8,6]
   decoder_layers : [6,8]
   num_jets : 10
@@ -25,7 +25,7 @@ model_config :
 training_config :
   contrastive_epochs : 10
   epochs : 20
-  batch_size : 64
+  batch_size : 1024
   emb_learning_rate : 0.0001
   learning_rate : 0.0001
   validation_split : 0.1
@@ -37,6 +37,6 @@ training_config :
   ReduceLROnPlateau_patience : 5
   ReduceLROnPlateau_min_lr : 0.00001
 
-  embedding_loss : 'SimCLR'
+  #embedding_loss : 'SimCLR'
   #embedding_loss : 'VICReg'
-  #embedding_loss : 'SupSimCLR'
+  embedding_loss : 'SupSimCLR'

@@ -45,7 +45,7 @@ if __name__ == "__main__":
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
     
-    background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
+    background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_test')
     background.normalise()
 
     training_columns = background.training_columns
@@ -57,11 +57,10 @@ if __name__ == "__main__":
     background_rates = rates(type(model).__name__,'minbias',background_outputs)
     
     #output_dict = {"background" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
-    #output_dict = {"background_test" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
-    output_dict = {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, 'HH_bbgammagamma':{},'HH_bbtautau':{},'QCD_HT50tobb':{}}
+    output_dict = {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
     
     for datasets in output_dict.keys():
-        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
+        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'+datasets+'_test/')
         data_test.normalise()
         max_jet_pt = 1
 
@@ -199,13 +198,11 @@ if __name__ == "__main__":
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
     
     #labels = {"background" : 0, "VBFHcc" :1, "ggHbb" : 2, "QCDbb" : 3, "HH4b" : 4, "QCD": 5}
-    #labels = {"background_test" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
-    
-    labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
-    
+    labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
+        
     dataset_list = []
     for datasets in output_dict.keys():
-        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
+        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'+datasets+'_test/')
         data_test.normalise()
 
         data_test.set_label(labels[datasets])

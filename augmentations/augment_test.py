@@ -28,18 +28,41 @@ if __name__ == "__main__":
     parser.add_argument(
         '-e', '--events', default=-1, type=int,help='Number of the test set events to run over'
     )
+    
+    parser.add_argument(
+        '-m', '--embedding_model', default='minbias_output/TransformerContrastiveEmbedding'
+    )
+    
+    parser.add_argument(
+        '-a', '--ad_dataset', action='store_true'
+    )
+    
 
     args = parser.parse_args()
+    
+    if args.ad_dataset:
+      background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_test')
+      background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_augment_test')
+      signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_test')
+      signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/_augment_test')
+    else:
+      background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
+      background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/augment')
+      signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/augment')
+      signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/test')
+
+        
+    
     
     setup_gpu_memory_growth()
     
     model = fromFolder(args.output)
+    model.load_embedding_model(args.embedding_model)
 
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
       
   
-    background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
     background.normalise()
 
     training_columns = background.training_columns
@@ -49,22 +72,18 @@ if __name__ == "__main__":
       background = background.data_frame.sample(n=args.events)
     background_outputs = model.predict(background,training_columns)
     
-    background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/augment')
     background_augment.normalise()
 
-    
     if args.events > 0:
       background_augment = background_augment.data_frame.sample(n=args.events)
     background_augment_outputs = model.predict(background_augment,training_columns)
     
-    signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/augment')
     signal_augment.normalise()
 
     if args.events > 0:
       signal_augment = signal_augment.data_frame.sample(n=args.events)
     signal_augment_outputs = model.predict(signal_augment,training_columns)
 
-    signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/test')
     signal.normalise()
 
     if args.events > 0:

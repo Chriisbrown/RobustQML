@@ -16,19 +16,15 @@ def train(model ,normalise,scenario,embedding_model):
     #labels = {"QCD": 0, 'QCDbb':1}
     #labels = {"QCD_HT50toInf":1}
     #labels = {"QCD_HT50tobb":2,"QCD_HT50toInf":1,"minbias":0}
-    if scenario == 'minbias':
-        labels = {"minbias":0}
-    if scenario == 'QCD':
-        labels = {"QCD_HT50tobb":2,"QCD_HT50toInf":1,"minbias":0}
+    if scenario == 'background':
+        labels = {"background":0}
     if scenario == 'all':
-        labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
-    if scenario == 'qcd_but':
-        labels = {"QCD_HT50toInf" :1,'QCD_HT50tobb':5}
+        labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, 'hToTauTau':3,'leptoquark':4}
         
         
     dataset_list = []
     for datasets in labels.keys():
-        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/train/')
+        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'+datasets+'_train/')
         data_test.normalise()
 
         data_test.set_label(labels[datasets])
@@ -71,10 +67,6 @@ if __name__ == "__main__":
     
     parser.add_argument(
         '-m', '--embedding_model', default='minbias_output/TransformerContrastiveEmbedding'
-    )
-    
-    parser.add_argument(
-        '-a', '--ad_dataset', action='store_true'
     )
 
     args = parser.parse_args()

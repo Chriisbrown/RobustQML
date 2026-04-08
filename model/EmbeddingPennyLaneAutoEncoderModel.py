@@ -59,8 +59,8 @@ class EmbeddingPennyLaneQAEModel(ADModel):
     def __init__(self,output_dir):
         super().__init__(output_dir)
         
-    def load_embedding_model(self):
-        self.embedding_model = fromFolder(self.model_config['embedding_model'])
+    def load_embedding_model(self,model_folder):
+        self.embedding_model = fromFolder(model_folder)
 
     def build_model(self, inputs_shape: tuple):
         """build model override
@@ -156,7 +156,6 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         """
         
         self.history = {}
-        self.load_embedding_model()
         
         os.makedirs(os.path.join(self.output_directory, 'plots/training'), exist_ok=True)
         
@@ -170,7 +169,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
                 
         val_batch_index = np.random.randint(0, len(X_train) // 2, size=self.training_config['batch_size'])
         print(val_batch_index)
-        val_embeddings = self.embedding_model.encoder_predict(X_train.to_numpy()[val_batch_index],training_columns)         
+        val_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy()[val_batch_index],training_columns)         
         
         x_val = np.zeros_like(val_embeddings)
         
@@ -196,14 +195,16 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         
         print(qml.specs(self.circuit)(circuit_weights_init, x_val[0],return_projector=True ))
         
+        batch_index = np.random.randint(len(X_train)//2, len(X_train), size=self.training_config['batch_size'])
+        train_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy()[batch_index],training_columns) 
+        x_train = np.zeros_like(train_embeddings)
+        for i_embedding in range(train_embeddings.shape[1]):
+            x_train[:,i_embedding] = (((train_embeddings[:,i_embedding] - np.min(train_embeddings[:,i_embedding])) / (np.max(train_embeddings[:,i_embedding]) - np.min(train_embeddings[:,i_embedding]))) * 2*np.pi) - np.pi
+                  
+                  
         for it in range(self.training_config['epochs']):
             # Update the weights by one optimizer step, using only a limited batch of data
-            batch_index = np.random.randint(len(X_train)//2, len(X_train), size=self.training_config['batch_size'])
-            train_embeddings = self.embedding_model.encoder_predict(X_train.to_numpy()[batch_index],training_columns) 
-            x_train = np.zeros_like(train_embeddings)
-            for i_embedding in range(train_embeddings.shape[1]):
-                x_train[:,i_embedding] = (((train_embeddings[:,i_embedding] - np.min(train_embeddings[:,i_embedding])) / (np.max(train_embeddings[:,i_embedding]) - np.min(train_embeddings[:,i_embedding]))) * 2*np.pi) - np.pi
-                        
+                  
             self.circuit_weights= self.opt.step(self.cost, self.circuit_weights, x=x_train)
 
             current_cost = self.cost(self.circuit_weights, x_train)
@@ -239,10 +240,9 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         Returns:
             float: model prediction
         """
-        self.load_embedding_model()
         self.build_model(len(training_columns))
 
-        embeddings = self.embedding_model.encoder_predict(X_test,training_columns) 
+        embeddings = self.embedding_model.encoder_predict(X_test[training_columns],training_columns) 
         x = np.zeros_like(embeddings)
         for i_embedding in range(embeddings.shape[1]):
             x[:,i_embedding] = (((embeddings[:,i_embedding] - np.min(embeddings[:,i_embedding])) / (np.max(embeddings[:,i_embedding]) - np.min(embeddings[:,i_embedding]))) * 2*np.pi) - np.pi

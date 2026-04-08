@@ -356,6 +356,9 @@ class ContrastiveEmbeddingModel(ADModel):
                              decoder_layers=self.model_config['decoder_layers'])
         print(self.contrastive_model.summary())
         print(self.vae_model.summary())
+        
+    def load_embedding_model(self,model_folder):
+        pass
 
     def compile_model(self, input_length):
         """compile the model generating callbacks and loss function

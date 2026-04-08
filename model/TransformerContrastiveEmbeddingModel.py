@@ -408,6 +408,10 @@ class TransformerContrastiveEmbeddingModel(ADModel):
         
         print(self.transformer_model.summary())
         print(self.vae_model.summary())
+        
+        
+    def load_embedding_model(self,model_folder):
+        pass
 
     def compile_model(self, input_length):
         """Compile the model generating callbacks and loss function

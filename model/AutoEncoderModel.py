@@ -104,6 +104,9 @@ class AutoEncoderModel(ADModel):
         
         self.history = history.history
         
+    def load_embedding_model(self,model_folder):
+        self.embedding_model = fromFolder(model_folder)
+        
     def predict(self, X_test, training_columns,return_score = True) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):

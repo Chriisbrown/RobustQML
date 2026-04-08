@@ -401,6 +401,9 @@ class VICRegModel(ADModel):
         else:
             return x_logit
         
+    def load_embedding_model(self,model_folder):
+        pass
+    
     def encoder_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
@@ -408,7 +411,7 @@ class VICRegModel(ADModel):
             test = X_test[training_columns].to_numpy()
         else:
             test = X_test
-        x_latent = self.vicreg_model.backbone(test)
+        x_latent = self.vicreg_model.backbone.predict(test)
         return x_latent
     
     def var_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:

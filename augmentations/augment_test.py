@@ -41,10 +41,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.ad_dataset:
-      background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_test')
-      background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_augment_test')
-      signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background_test')
-      signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/_augment_test')
+      background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background/test')
+      background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background/augment')
+      signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/blackbox/test')
+      signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/blackbox/augment')
     else:
       background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
       background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/augment')

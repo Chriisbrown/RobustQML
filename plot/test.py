@@ -32,11 +32,28 @@ if __name__ == "__main__":
     parser.add_argument(
         '-m', '--embedding_model', default='minbias_output/TransformerContrastiveEmbedding'
     )
-
-
-
-    args = parser.parse_args()
     
+    parser.add_argument(
+        '-a', '--ad_dataset', action='store_true'
+    )
+    
+    args = parser.parse_args()    
+
+    if args.ad_dataset:
+        background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background/test/')
+        output_dict = {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
+        labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
+        path = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'
+        background_name = 'background'
+        
+    else:
+        background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
+        output_dict = {"minbias" : {} , "QCD_HT50toInf" :{}, "HH_4b" : {}, 'HH_bbgammagamma':{},'HH_bbtautau':{},'QCD_HT50tobb':{}}
+        labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
+        path = '/eos/user/c/cebrown/RobustQML/training_data/'
+        background_name = 'minbias'
+
+
     setup_gpu_memory_growth()
     
     model = fromFolder(args.output)
@@ -45,7 +62,6 @@ if __name__ == "__main__":
     plot_dir = os.path.join(model.output_directory, "plots/testing")
     os.makedirs(plot_dir, exist_ok=True)
     
-    background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
     background.normalise()
 
     training_columns = background.training_columns
@@ -53,15 +69,11 @@ if __name__ == "__main__":
     if args.events > 0:
         background = background.data_frame.sample(n=args.events)
     background_outputs = model.predict(background,training_columns)
-    print(background_outputs)
-    background_rates = rates(type(model).__name__,'minbias',background_outputs)
+    background_rates = rates(type(model).__name__,background_name,background_outputs)
     
-    #output_dict = {"background" : {}, "VBFHcc" :{}, "ggHbb" : {}, "QCDbb" : {}, "HH4b" : {}, "QCD" : {}}
-    #output_dict = {"background_test" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
-    output_dict = {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, 'HH_bbgammagamma':{},'HH_bbtautau':{},'QCD_HT50tobb':{}}
-    
+
     for datasets in output_dict.keys():
-        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
+        data_test = DataSet.fromH5(path+datasets+'/test/')
         data_test.normalise()
         max_jet_pt = 1
 
@@ -86,16 +98,18 @@ if __name__ == "__main__":
         save_path = os.path.join(plot_dir, "mu_mult_"+datasets)
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
         plt.close() 
-        plot_2d(data_test['Gen_MissingET_MET'], model_outputs, (0,100), (0,1), 'Gen Missing ET', 'model predictions', 'Gen Missing ET dependence for '+datasets)
-        save_path = os.path.join(plot_dir, "genEt_"+datasets)
-        plt.savefig(f"{save_path}.png", bbox_inches='tight')
-        plt.close() 
         
-    target_background = np.zeros(output_dict['minbias']['predictions'].shape[0])
+        if not args.ad_dataset:
+            plot_2d(data_test['Gen_MissingET_MET'], model_outputs, (0,100), (0,1), 'Gen Missing ET', 'model predictions', 'Gen Missing ET dependence for '+datasets)
+            save_path = os.path.join(plot_dir, "genEt_"+datasets)
+            plt.savefig(f"{save_path}.png", bbox_inches='tight')
+            plt.close() 
+        
+    target_background = np.zeros(output_dict[background_name]['predictions'].shape[0])
     fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
     for i,datasets in enumerate(output_dict.keys()):
         trueVal = np.concatenate((np.ones(output_dict[datasets]['predictions'].shape[0]), target_background)) # anomaly=1, bkg=0
-        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['minbias']['predictions']))
+        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict[background_name]['predictions']))
 
         fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
@@ -115,29 +129,29 @@ if __name__ == "__main__":
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
     plt.close() 
     
-    target_background = np.zeros(output_dict['QCD_HT50toInf']['predictions'].shape[0])
-    fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
-    for i,datasets in enumerate(output_dict.keys()):
-        trueVal = np.concatenate((np.ones(output_dict[datasets]['predictions'].shape[0]), target_background)) # anomaly=1, bkg=0
-        predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['QCD_HT50toInf']['predictions']))
+    # target_background = np.zeros(output_dict['QCD_HT50toInf']['predictions'].shape[0])
+    # fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+    # for i,datasets in enumerate(output_dict.keys()):
+    #     trueVal = np.concatenate((np.ones(output_dict[datasets]['predictions'].shape[0]), target_background)) # anomaly=1, bkg=0
+    #     predVal_loss = np.concatenate((output_dict[datasets]['predictions'], output_dict['QCD_HT50toInf']['predictions']))
 
-        fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
+    #     fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
-        auc_loss = auc(fpr_loss, tpr_loss)
+    #     auc_loss = auc(fpr_loss, tpr_loss)
                 
-        plt.plot(fpr_loss, tpr_loss, "-", label=datasets+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[i])
+    #     plt.plot(fpr_loss, tpr_loss, "-", label=datasets+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[i])
             
-    ax.semilogx()
-    ax.semilogy()
-    ax.set_ylabel("True Positive Rate")
-    ax.set_xlabel("False Positive Rate")
-    ax.legend(loc='center right')
-    ax.grid(True)
-    ax.plot(np.linspace(0, 1),np.linspace(0, 1), '--', color='0.75')
-    ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
-    save_path = os.path.join(plot_dir, "output_ROC_v_QCD")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.close() 
+    # ax.semilogx()
+    # ax.semilogy()
+    # ax.set_ylabel("True Positive Rate")
+    # ax.set_xlabel("False Positive Rate")
+    # ax.legend(loc='center right')
+    # ax.grid(True)
+    # ax.plot(np.linspace(0, 1),np.linspace(0, 1), '--', color='0.75')
+    # ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
+    # save_path = os.path.join(plot_dir, "output_ROC_v_QCD")
+    # plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    # plt.close() 
     
     
     if model.encoder_predict(background,training_columns) is not None:
@@ -201,11 +215,10 @@ if __name__ == "__main__":
     #labels = {"background" : 0, "VBFHcc" :1, "ggHbb" : 2, "QCDbb" : 3, "HH4b" : 4, "QCD": 5}
     #labels = {"background_test" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
     
-    labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
     
     dataset_list = []
     for datasets in output_dict.keys():
-        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
+        data_test = DataSet.fromH5(path+datasets+'/test/')
         data_test.normalise()
 
         data_test.set_label(labels[datasets])
@@ -230,10 +243,12 @@ if __name__ == "__main__":
     save_path = os.path.join(plot_dir, "mu_mult")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
     plt.close() 
-    plot_2d(full_data_frame['Gen_MissingET_MET'], combined_predictions, (0,100), (0,1), 'Gen Missing ET', 'model predictions', 'Gen Missing ET dependence')
-    save_path = os.path.join(plot_dir, "genEt")
-    plt.savefig(f"{save_path}.png", bbox_inches='tight')
-    plt.close() 
+    
+    if not args.ad_dataset:
+        plot_2d(full_data_frame['Gen_MissingET_MET'], combined_predictions, (0,100), (0,1), 'Gen Missing ET', 'model predictions', 'Gen Missing ET dependence')
+        save_path = os.path.join(plot_dir, "genEt")
+        plt.savefig(f"{save_path}.png", bbox_inches='tight')
+        plt.close() 
     
     if args.events > 0:
         pass

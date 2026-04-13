@@ -255,6 +255,10 @@ if __name__ == "__main__":
         '-e', '--events', default=-1, type=int,help='Number of the test set events to run over'
     )
     
+    parser.add_argument(
+        '-a', '--ad_dataset', action='store_true'
+    )
+    
     args = parser.parse_args()
     
     setup_gpu_memory_growth()
@@ -264,16 +268,22 @@ if __name__ == "__main__":
     plot_dir = os.path.join(model.output_directory, "plots/testing/latent")
     os.makedirs(plot_dir, exist_ok=True)
     
-    
-    event_labels = {'minbias' :0,'QCD_HT50toInf' : 1,'HH_4b' : 2,'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
-    event_label_style = {'minbias':'Minbias', 'QCD_HT50toInf': 'QCD_HT50toInf', 'HH_4b':'HH->bbbb','HH_bbgammagamma':'HH_bbgammagamma','HH_bbtautau':'HH_bbtautau','QCD_HT50tobb':'QCD_HT50tobb' }
-
+    if args.ad_dataset:
+        event_labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
+        event_label_style = {"background" : 'SM background', "ato4l" :'A -> 4l', "hChToTauNu" : 'H+ -> Tau Nu', "hToTauTau" : 'h -> Tau Tau', "leptoquark" : 'leptoquark', "blackbox": 'blackbox'}
+        path = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'
+        
+    else:
+        event_labels = {'minbias' :0,'QCD_HT50toInf' : 1,'HH_4b' : 2,'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
+        event_label_style = {'minbias':'Minbias', 'QCD_HT50toInf': 'QCD_HT50toInf', 'HH_4b':'HH->bbbb','HH_bbgammagamma':'HH_bbgammagamma','HH_bbtautau':'HH_bbtautau','QCD_HT50tobb':'QCD_HT50tobb' }
+        path = '/eos/user/c/cebrown/RobustQML/training_data/'
+        
     latent_vector = []
     event_label_vector = []
     
     
     for datasets in event_labels.keys():
-        data_test = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/'+datasets+'/test/')
+        data_test = DataSet.fromH5(path+datasets+'/test/')
         data_test.normalise()
         data_test_dataframe = data_test.data_frame.sample(n=1000)
         latent_representations = model.encoder_predict(data_test_dataframe,data_test.training_columns)

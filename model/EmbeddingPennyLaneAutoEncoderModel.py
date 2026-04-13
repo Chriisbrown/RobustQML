@@ -170,13 +170,12 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         val_batch_index = np.random.randint(0, len(X_train) // 2, size=self.training_config['batch_size'])
         print(val_batch_index)
         val_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy()[val_batch_index],training_columns)         
-        
-        x_val = np.zeros_like(val_embeddings)
-        
+                
+        x_val = np.array((((val_embeddings - np.min(val_embeddings)) / (np.max(val_embeddings) - np.min(val_embeddings))) * 2*np.pi) - np.pi)
+
         plt.clf()
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
         for i_embedding in range(val_embeddings.shape[1]):
-            x_val[:,i_embedding] = (((val_embeddings[:,i_embedding] - np.min(val_embeddings[:,i_embedding])) / (np.max(val_embeddings[:,i_embedding]) - np.min(val_embeddings[:,i_embedding]))) * 2*np.pi) - np.pi
             ax.hist(
                         x_val[:,i_embedding],
                         bins=100,
@@ -197,9 +196,9 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         
         batch_index = np.random.randint(len(X_train)//2, len(X_train), size=self.training_config['batch_size'])
         train_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy()[batch_index],training_columns) 
-        x_train = np.zeros_like(train_embeddings)
-        for i_embedding in range(train_embeddings.shape[1]):
-            x_train[:,i_embedding] = (((train_embeddings[:,i_embedding] - np.min(train_embeddings[:,i_embedding])) / (np.max(train_embeddings[:,i_embedding]) - np.min(train_embeddings[:,i_embedding]))) * 2*np.pi) - np.pi
+        #x_train = np.zeros_like(train_embeddings)
+        #for i_embedding in range(train_embeddings.shape[1]):
+        x_train = np.array((((train_embeddings - np.min(train_embeddings)) / (np.max(train_embeddings) - np.min(train_embeddings))) * 2*np.pi) - np.pi)
                   
                   
         for it in range(self.training_config['epochs']):
@@ -243,9 +242,9 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         self.build_model(len(training_columns))
 
         embeddings = self.embedding_model.encoder_predict(X_test[training_columns],training_columns) 
-        x = np.zeros_like(embeddings)
-        for i_embedding in range(embeddings.shape[1]):
-            x[:,i_embedding] = (((embeddings[:,i_embedding] - np.min(embeddings[:,i_embedding])) / (np.max(embeddings[:,i_embedding]) - np.min(embeddings[:,i_embedding]))) * 2*np.pi) - np.pi
+        #x = np.zeros_like(embeddings)
+        #for i_embedding in range(embeddings.shape[1]):
+        x = (((embeddings - np.min(embeddings)) / (np.max(embeddings) - np.min(embeddings))) * 2*np.pi) - np.pi
 
         predictions = []
         

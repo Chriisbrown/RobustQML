@@ -15,7 +15,6 @@ import h5py
 
 from sklearn.preprocessing import MinMaxScaler
 
-
 class DataSet:
     def __init__(self, name, orig=None):
         self.name = name
@@ -46,14 +45,19 @@ class DataSet:
         self.bonus_columns = ['L1T_PFCand_PT','L1T_PUPPIPart_PT']
         self.multiplicity_feature_list = ['jet_multiplicity','muon_multiplicity','electron_multiplicity']
         
-        top_x_jets = [feature + str(i) for i in range(self.max_number_of_jets) for feature in self.jet_feature_list]
-        top_x_muons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.muon_feature_list ]
-        top_x_electrons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.electron_feature_list ]
-        self.all_features = self.met_feature_list +  self.multiplicity_feature_list + top_x_jets + top_x_muons + top_x_electrons
+        self.top_x_jets = [feature + str(i) for i in range(self.max_number_of_jets) for feature in self.jet_feature_list]
+        self.top_x_muons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.muon_feature_list ]
+        self.top_x_electrons = [feature + str(i) for i in range(self.max_number_of_objects) for feature in self.electron_feature_list ]
+        self.all_features = self.met_feature_list +  self.multiplicity_feature_list + self.top_x_jets + self.top_x_muons + self.top_x_electrons
         
-        self.training_columns =   self.met_feature_list + top_x_electrons  + top_x_muons + top_x_jets 
+        self.training_columns =   self.met_feature_list + self.top_x_electrons  + self.top_x_muons + self.top_x_jets 
         self.non_met_columns = [column for column in self.training_columns if "PT" in column ]
-            
+    
+    def add_multiplicities(self):          
+        self.data_frame['jet_multiplicity'] = (self.data_frame[ self.top_x_jets ] != 0 ).sum(axis=1) / 3
+        self.data_frame['muon_multiplicity'] = (self.data_frame[ self.top_x_muons ] != 0).sum(axis=1) / 3
+        self.data_frame['electron_multiplicity'] = (self.data_frame[ self.top_x_electrons ] != 0).sum(axis=1) / 3
+
         
     def __add__(self, others : list ):
         frames = [other.data_frame for other in others]
@@ -138,6 +142,8 @@ class DataSet:
             flattened = np.c_[flattened,labels]
         self.data_frame = pd.DataFrame(flattened, columns=columns)
         self.data_frame.reset_index(inplace=True)
+        self.add_multiplicities()
+        print(self.data_frame.head())
             
 
     def plot_inputs(self, filepath):
@@ -201,6 +207,21 @@ class DataSet:
                 x_range=(np.min(self.data_frame[met_feature]), np.max(self.data_frame[met_feature])),
             )
             save_path = os.path.join(plot_dir, met_feature)
+            plt.savefig(f"{save_path}.png", bbox_inches='tight')
+            plt.close()
+            
+        print('plot multiplicity features')
+        for multiplicity_feature in self.multiplicity_feature_list:
+            plot_histo(
+                [self.data_frame[multiplicity_feature] ],
+                [multiplicity_feature],
+                self.pretty_name,
+                multiplicity_feature,
+                'a.u',
+                log = 'log',
+                x_range=(np.min(self.data_frame[multiplicity_feature]), np.max(self.data_frame[multiplicity_feature])),
+            )
+            save_path = os.path.join(plot_dir, multiplicity_feature)
             plt.savefig(f"{save_path}.png", bbox_inches='tight')
             plt.close()
 

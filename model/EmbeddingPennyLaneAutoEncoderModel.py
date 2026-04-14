@@ -222,6 +222,84 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         
         # self.dev._circuit.draw(output="mpl")
         # plt.savefig(self.output_directory+'/plots/training/circuit.png')
+        
+        
+    def only_QAE_fit(
+        self,
+        X_train: DataSet,
+    ):
+        """Fit the model to the training dataset
+
+        Args:
+            X_train (npt.NDArray[np.float64]): X train dataset
+        """
+        
+        self.history = {}
+        
+        os.makedirs(os.path.join(self.output_directory, 'plots/training'), exist_ok=True)
+        
+        circuit_weights_init = 0.01 * np.random.randn(self.nq*4, requires_grad=True)
+                
+        self.circuit_weights = circuit_weights_init
+        
+        print("circuit_weights:", circuit_weights_init)
+        cost = []
+        val_cost = []
+                
+        val_batch_index = np.random.randint(0, len(X_train) // 2, size=self.training_config['batch_size'])
+        val_embeddings = X_train[val_batch_index]   
+                
+        x_val = np.array((((val_embeddings - np.min(val_embeddings)) / (np.max(val_embeddings) - np.min(val_embeddings))) * 2*np.pi) - np.pi)
+
+        plt.clf()
+        fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+        for i_embedding in range(val_embeddings.shape[1]):
+            ax.hist(
+                        x_val[:,i_embedding],
+                        bins=100,
+                        range=(-np.pi,np.pi),
+                        histtype="step",
+                        stacked=False,
+                        linewidth=style.LINEWIDTH - 1.5,
+                        label = "val dim: "+str(i_embedding),
+                        density=True,
+                        )
+        ax.grid(True)
+        ax.set_xlabel('Input variable', ha="right", x=1)
+        ax.set_yscale('log')
+        ax.legend()
+        plt.savefig(self.output_directory+'/plots/training/rescaled_inputs.png')
+        
+        print(qml.specs(self.circuit)(circuit_weights_init, x_val[0],return_projector=True ))
+        
+        batch_index = np.random.randint(len(X_train)//2, len(X_train), size=self.training_config['batch_size'])
+        train_embeddings = X_train[batch_index]
+        #x_train = np.zeros_like(train_embeddings)
+        #for i_embedding in range(train_embeddings.shape[1]):
+        x_train = np.array((((train_embeddings - np.min(train_embeddings)) / (np.max(train_embeddings) - np.min(train_embeddings))) * 2*np.pi) - np.pi)
+                  
+                  
+        for it in range(self.training_config['epochs']):
+            # Update the weights by one optimizer step, using only a limited batch of data
+                  
+            self.circuit_weights= self.opt.step(self.cost, self.circuit_weights, x=x_train)
+
+            current_cost = self.cost(self.circuit_weights, x_train)
+            cost.append(current_cost)
+                        
+            # Compute accuracy            
+            validation_cost = self.cost(self.circuit_weights, x_val )
+            val_cost.append(validation_cost)
+            print(f"Iter: {it+1:4d} | Cost: {current_cost:0.7f} | Validation Cost: {validation_cost:0.7f}")
+
+        print("circuit_weights at at iteration", it," : ", self.circuit_weights)
+        self.history['loss'] = cost
+        self.history['val_loss'] = val_cost
+        
+        # print(qml.draw(self.circuit)(self.circuit_weights,x1_batch[0],x2_batch[0]))
+        
+        # self.dev._circuit.draw(output="mpl")
+        # plt.savefig(self.output_directory+'/plots/training/circuit.png')
 
     def predict(self, X_test, training_columns, return_score = True) -> npt.NDArray[np.float64]:
         
@@ -245,6 +323,30 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         #x = np.zeros_like(embeddings)
         #for i_embedding in range(embeddings.shape[1]):
         x = (((embeddings - np.min(embeddings)) / (np.max(embeddings) - np.min(embeddings))) * 2*np.pi) - np.pi
+
+        predictions = []
+        
+        for ievent in range(len(x)):
+            predictions.append(qml.math.mean(self.autoencoder(self.circuit_weights,  x[ievent] )))
+        ad_scores = np.array(predictions ) 
+        ad_scores = 1 - ad_scores/0.5
+        return ad_scores
+    
+    def only_QAE_predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+
+        """Predict method for model
+
+        Args:
+            X_test (npt.NDArray[np.float64]): Input X test
+
+        Returns:
+            float: model prediction
+        """
+        self.build_model(X_test.shape[1])
+
+        #x = np.zeros_like(embeddings)
+        #for i_embedding in range(embeddings.shape[1]):
+        x = (((X_test - np.min(X_test)) / (np.max(X_test) - np.min(X_test))) * 2*np.pi) - np.pi
 
         predictions = []
         

@@ -7,4 +7,5 @@ from model.ContrastiveEmbeddingModel import ContrastiveEmbeddingModel
 from model.TransformerContrastiveEmbeddingModel import TransformerContrastiveEmbeddingModel
 from model.PennyLaneAutoEncoderModel import PennyLaneQAEModel
 from model.EmbeddingPennyLaneAutoEncoderModel import EmbeddingPennyLaneQAEModel
+from model.EmbeddingClassicalAutoEncoderModel import EmbeddingCAEModel
 from model.ImprovedAutoEncoderModel import ImprovedAutoEncoderModel

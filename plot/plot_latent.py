@@ -6,7 +6,7 @@ from model.gpu_utils import setup_gpu_memory_growth
 
 from plot import style
 
-from basic import error_residual, plot_histo, rates,efficiency, clusters, plot_2d
+from plot.basic import error_residual, plot_histo, rates,efficiency, clusters, plot_2d
 import matplotlib
 from sklearn.metrics import roc_curve, auc
 from matplotlib.pyplot import cm

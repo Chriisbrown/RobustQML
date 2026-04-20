@@ -62,13 +62,16 @@ class EmbeddingPennyLaneQAEModel(ADModel):
     def load_embedding_model(self,model_folder):
         self.embedding_model = fromFolder(model_folder)
 
-    def build_model(self, inputs_shape: tuple):
+    def build_model(self, inputs_shape: tuple, xmin,xmax):
         """build model override
 
         Args:
             inputs_shape (tuple): Shape of the input
         """
         total_object = int(self.model_config['embedding_dim']) 
+        
+        self.xmin = xmin
+        self.xmax = xmax
         
         nq = total_object
         nt = int(nq - self.model_config['latent_dim'])        
@@ -170,8 +173,9 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         val_batch_index = np.random.randint(0, len(X_train) // 2, size=self.training_config['batch_size'])
         print(val_batch_index)
         val_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy()[val_batch_index],training_columns)         
-                
-        x_val = np.array((((val_embeddings - np.min(val_embeddings)) / (np.max(val_embeddings) - np.min(val_embeddings))) * 2*np.pi) - np.pi)
+        
+        val_embeddings = np.clip(val_embeddings, self.xmin, self.xmax)
+        x_val = np.array((((val_embeddings - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
 
         plt.clf()
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
@@ -198,7 +202,8 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         train_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy()[batch_index],training_columns) 
         #x_train = np.zeros_like(train_embeddings)
         #for i_embedding in range(train_embeddings.shape[1]):
-        x_train = np.array((((train_embeddings - np.min(train_embeddings)) / (np.max(train_embeddings) - np.min(train_embeddings))) * 2*np.pi) - np.pi)
+        train_embeddings = np.clip(train_embeddings, self.xmin, self.xmax)
+        x_train = np.array((((train_embeddings - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
                   
                   
         for it in range(self.training_config['epochs']):
@@ -249,7 +254,8 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         val_batch_index = np.random.randint(0, len(X_train) // 2, size=self.training_config['batch_size'])
         val_embeddings = X_train[val_batch_index]   
                 
-        x_val = np.array((((val_embeddings - np.min(val_embeddings)) / (np.max(val_embeddings) - np.min(val_embeddings))) * 2*np.pi) - np.pi)
+        val_embeddings = np.clip(val_embeddings, self.xmin, self.xmax)
+        x_val = np.array((((val_embeddings - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
 
         plt.clf()
         fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
@@ -276,7 +282,8 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         train_embeddings = X_train[batch_index]
         #x_train = np.zeros_like(train_embeddings)
         #for i_embedding in range(train_embeddings.shape[1]):
-        x_train = np.array((((train_embeddings - np.min(train_embeddings)) / (np.max(train_embeddings) - np.min(train_embeddings))) * 2*np.pi) - np.pi)
+        train_embeddings = np.clip(train_embeddings, self.xmin, self.xmax)
+        x_train = np.array((((train_embeddings - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
                   
                   
         for it in range(self.training_config['epochs']):
@@ -317,12 +324,13 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         Returns:
             float: model prediction
         """
-        self.build_model(len(training_columns))
+        self.build_model(len(training_columns),self.xmin,self.xmax)
 
         embeddings = self.embedding_model.encoder_predict(X_test[training_columns],training_columns) 
         #x = np.zeros_like(embeddings)
         #for i_embedding in range(embeddings.shape[1]):
-        x = (((embeddings - np.min(embeddings)) / (np.max(embeddings) - np.min(embeddings))) * 2*np.pi) - np.pi
+        embeddings = np.clip(embeddings, self.xmin, self.xmax)
+        x = (((embeddings - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
 
         predictions = []
         
@@ -342,11 +350,12 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         Returns:
             float: model prediction
         """
-        self.build_model(X_test.shape[1])
+        self.build_model(X_test.shape[1],self.xmin,self.xmax)
 
         #x = np.zeros_like(embeddings)
         #for i_embedding in range(embeddings.shape[1]):
-        x = (((X_test - np.min(X_test)) / (np.max(X_test) - np.min(X_test))) * 2*np.pi) - np.pi
+        X_test = np.clip(X_test, self.xmin, self.xmax)
+        x = (((X_test - self.xmin) / (self.xmax- self.xmin)) * 2*np.pi) - np.pi
 
         predictions = []
         
@@ -375,6 +384,11 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         # Export the model
         os.makedirs(os.path.join(out_dir, 'model'), exist_ok=True)
         np.save(out_dir+"/model/circuit_weights.npy", self.circuit_weights)
+        
+        with open(out_dir+"/model/"+"min.txt", "a") as f:
+            f.write(str(self.xmin))
+        with open(out_dir+"/model/"+"max.txt", "a") as f:
+            f.write(str(self.xmax))
 
     @ADModel.load_decorator
     def load(self, out_dir: str = "None"):
@@ -385,3 +399,90 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         """
         # Load the model
         self.circuit_weights=np.load(out_dir+"/model/circuit_weights.npy")
+        with open(f"{out_dir}/model/min.txt") as f:
+            self.xmin = float(f.read())
+        with open(f"{out_dir}/model/max.txt") as f:
+            self.xmax = float(f.read())
+
+
+# Register the model in the factory with the string name corresponding to what is in the yaml config
+@ADModelFactory.register('EmbeddingHWPennyLaneQAEModel')
+class EmbeddingHWPennyLaneQAEModel(EmbeddingPennyLaneQAEModel):
+
+    """EmbeddingHWPennyLaneQAEModel class
+
+    Args:
+        EmbeddingHWPennyLaneQAEModel (_type_): Base class of a PennyLaneQAEModel
+    """
+    
+    def __init__(self,output_dir):
+        super().__init__(output_dir)
+
+
+    def build_model(self, inputs_shape: tuple,xmin,xmax):
+        """build model override
+
+        Args:
+            inputs_shape (tuple): Shape of the input
+        """
+        total_object = int(self.model_config['embedding_dim']) 
+        self.xmin = xmin
+        self.xmax = xmax
+        nq = total_object
+        nt = int(nq - self.model_config['latent_dim'])        
+        self.nq = nq
+        
+        self.q_wires = [f"q{i}" for i in range(nq)]
+        self.t_wires = [f"t{i}" for i in range(nt)]
+        self.a_wire = "a"
+                
+        self.dev = qml.device("lightning.gpu", wires=self.q_wires + self.t_wires + [self.a_wire])
+        @qml.set_shots(shots=1000)
+        @qml.qnode(self.dev)
+        def circuit(weights,x1, return_projector=True):
+            """
+            featsy: shape (nq,)
+            featsx: shape (nq,)
+            theta:  shape (4*nq,)
+            """
+            layers=int(self.model_config['layers'])
+
+            # Encoding layer
+            for i in range(nq):
+                qml.RY(x1[i], wires=self.q_wires[i])
+
+            for i in range(layers):
+                # Rotation layer
+                for i in range(nq):
+                    qml.RZ(weights[i],           wires=self.q_wires[i])
+                    qml.RY(weights[i + nq],      wires=self.q_wires[i])
+                    qml.RZ(weights[i + 2 * nq],  wires=self.q_wires[i])
+                    qml.RX(weights[i + 3 * nq],  wires=self.q_wires[i])
+                    
+                for i in range(0, nq, 2):
+                    qml.CNOT(wires=[self.q_wires[i], self.q_wires[i + 1]])
+                    
+                for i in range(1, nq-1, 2):
+                    qml.CNOT(wires=[self.q_wires[i], self.q_wires[i + 1]])
+                
+            qml.CSWAP(wires=[self.a_wire, self.q_wires[-(i + 1)], self.t_wires[-(i + 1)]])
+
+            # Ancilla H
+            qml.Hadamard(wires=self.a_wire)
+
+            # Controlled-SWAPs
+            for i in reversed(range(nt)):
+                qml.CSWAP(wires=[self.a_wire, self.q_wires[-(i + 1)], self.t_wires[-(i + 1)]])
+
+            # Final H
+            qml.Hadamard(wires=self.a_wire)
+
+            # "Measure ancilla"
+            if return_projector:
+                # returns samples of projector onto |1>, i.e. 1 if ancilla is |1>, else 0
+                return qml.sample(qml.Projector([1], wires=self.a_wire))
+            else:
+                # returns samples of PauliZ: +1 corresponds to |0>, -1 to |1>
+                return qml.sample(qml.PauliZ(wires=self.a_wire))
+
+        self.circuit = circuit

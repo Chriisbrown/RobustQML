@@ -1,0 +1,16 @@
+model: EmbeddingHWPennyLaneQAEModel
+run_config :
+  verbose : 2
+  debug : True
+  num_threads : 64
+
+model_config :
+  name : qae
+  latent_dim : 1
+  embedding_dim : 8
+  layers : 1
+
+training_config :
+  epochs : 50
+  batch_size : 100
+  learning_rate : 0.2

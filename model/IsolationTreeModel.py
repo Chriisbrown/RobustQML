@@ -90,10 +90,10 @@ class IsolationTreeModel(ADModel):
             train (DataSet): train dataset
         """
         
-        num_trees = self.model_config.get('n_estimators', 50)
+        num_trees = self.model_config.get('n_estimators', 1000)
         max_depth = self.model_config.get('max_depth', -1)
         min_examples = self.model_config.get('min_examples', 5)
-        split_axis = self.model_config.get('split_axis', 'SPARSE_OBLIQUE')
+        split_axis = self.model_config.get('split_axis', 'AXIS_ALIGNED')
         random_seed = self.model_config.get('random_seed', 123456)
 
         train_dict = {'feature_'+str(i) : X_train[:,i] for i in range(X_train.shape[1])}
@@ -177,3 +177,4 @@ class IsolationTreeModel(ADModel):
         """
         # Load the model
         self.AD_model = ydf.load_model(f"{out_dir}/model/saved_model/")
+        

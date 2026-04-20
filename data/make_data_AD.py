@@ -9,11 +9,11 @@ from sklearn.model_selection import train_test_split
 
 if __name__ == "__main__":
 
-    process_folders = { 'background' : {'path':'background_for_training','pretty':'SM background'},
+    process_folders = { #'background' : {'path':'background_for_training','pretty':'SM background'},
                         'ato4l': {'path':'Ato4l_lepFilter_13TeV_filtered','pretty':'A -> 4l'},
-                        'hChToTauNu': {'path':'hChToTauNu_13TeV_PU20_filtered','pretty':'H+ -> Tau Nu'},
-                        'hToTauTau': {'path':'hToTauTau_13TeV_PU20_filtered','pretty':'h -> Tau Tau'},
-                        'leptoquark': {'path':'leptoquark_LOWMASS_lepFilter_13TeV_filtered','pretty':'leptoquark'},
+                        #'hChToTauNu': {'path':'hChToTauNu_13TeV_PU20_filtered','pretty':'H+ -> Tau Nu'},
+                        #'hToTauTau': {'path':'hToTauTau_13TeV_PU20_filtered','pretty':'h -> Tau Tau'},
+                        #'leptoquark': {'path':'leptoquark_LOWMASS_lepFilter_13TeV_filtered','pretty':'leptoquark'},
 
                         }
     #outdir = 'training_data/'  

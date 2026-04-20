@@ -14,7 +14,7 @@ model_config :
   embed_dim : 32
   dropout_rate : 0.1
   backbone_layers : [32,16]
-  latent_dim : 8
+  latent_dim : 4
   encoder_layers : [8,6]
   decoder_layers : [6,8]
   num_jets : 10

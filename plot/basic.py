@@ -9,6 +9,8 @@ import umap
 
 from plot import style
 
+from sklearn.metrics import roc_curve, auc
+
 style.set_style()
 
 def plot_2d(variable_one, variable_two, range_one, range_two, name_one, name_two, title):
@@ -141,6 +143,43 @@ def clusters(distances,labels,plot_dir=None,label_to_names={}):
     plt.legend()
     save_path = os.path.join(plot_dir, "clusters")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    
+    
+def ROC_curve(background,signal,labels,plot=True):
+    if plot:
+        fig, ax = plt.subplots(1, 1, figsize=style.FIGURE_SIZE)
+    
+    else:
+        auc_loss_list = []
+    
+    for i,label in enumerate(labels):
+            target_background = np.zeros(background[i].shape[0])
+            trueVal = np.concatenate((np.ones(signal[i].shape[0]), target_background)) # anomaly=1, bkg=0
+            predVal_loss = np.concatenate((signal[i], background[i]))
+
+            fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
+
+            auc_loss = auc(fpr_loss, tpr_loss)
+            
+            if plot:
+                    
+                plt.plot(fpr_loss, tpr_loss, "-", label=label+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[i])
+                
+            else:
+                auc_loss_list.append(auc_loss)
+    if plot:       
+        ax.semilogx()
+        ax.semilogy()
+        ax.set_ylabel("True Positive Rate")
+        ax.set_xlabel("False Positive Rate")
+        ax.legend(loc='center right')
+        ax.grid(True)
+        ax.plot(np.linspace(0, 1),np.linspace(0, 1), '--', color='0.75')
+        ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
+        return fig
+    
+    else:
+        return auc_loss_list
     
     
     

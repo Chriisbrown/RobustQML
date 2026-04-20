@@ -605,7 +605,7 @@ class TransformerContrastiveEmbeddingModel(ADModel):
             test = X_test
         
         x = tf.cast(test, tf.float32)
-        latent = self.transformer_model.predict(x)
+        latent = self.transformer_model.predict(x, batch_size=10000)
         return latent
 
     def var_predict(self, X_test, training_columns) -> npt.NDArray[np.float64]:

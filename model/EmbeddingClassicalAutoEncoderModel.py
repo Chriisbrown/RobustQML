@@ -43,7 +43,7 @@ class EmbeddingCAEModel(ADModel):
     def load_embedding_model(self,model_folder):
         self.embedding_model = fromFolder(model_folder)
 
-    def build_model(self, inputs_shape: tuple):
+    def build_model(self, inputs_shape: tuple, xmin,xmax):
         """build model override
 
         Args:
@@ -68,6 +68,9 @@ class EmbeddingCAEModel(ADModel):
         decoder = Dense(self.model_config['embedding_dim'],activation='sigmoid',name='model_output')(decoder)
                 
         self.AD_model = keras.Model(inputs=inputs, outputs=decoder)
+        
+        self.xmin = xmin
+        self.xmax = xmax
         
         
     def compile_model(self,num_samples):
@@ -108,7 +111,8 @@ class EmbeddingCAEModel(ADModel):
         
         
         train_embeddings = self.embedding_model.encoder_predict(X_train[training_columns].to_numpy(),training_columns) 
-        x_train = np.array((((train_embeddings - np.min(train_embeddings)) / (np.max(train_embeddings) - np.min(train_embeddings))) * 2*np.pi) - np.pi)
+        train_embeddings = np.clip(train_embeddings, self.xmin, self.xmax)
+        x_train = np.array((((train_embeddings - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
                   
                   
         keras.config.disable_traceback_filtering()
@@ -136,8 +140,8 @@ class EmbeddingCAEModel(ADModel):
         """
         
         
-        
-        x_train = np.array((((X_train - np.min(X_train)) / (np.max(X_train) - np.min(X_train))) * 2*np.pi) - np.pi)
+        X_train = np.clip(X_train, self.xmin, self.xmax)
+        x_train = np.array((((X_train - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
                   
                   
         keras.config.disable_traceback_filtering()
@@ -175,7 +179,8 @@ class EmbeddingCAEModel(ADModel):
         embeddings = self.embedding_model.encoder_predict(test,training_columns) 
         #x = np.zeros_like(embeddings)
         #for i_embedding in range(embeddings.shape[1]):
-        x = (((embeddings - np.min(embeddings)) / (np.max(embeddings) - np.min(embeddings))) * 2*np.pi) - np.pi
+        embeddings = np.clip(embeddings, self.xmin, self.xmax)
+        x = (((embeddings - self.xmin) / (self.xmax- self.xmin)) * 2*np.pi) - np.pi
         
         model_outputs = self.AD_model.predict(x)
         ad_scores = tf.keras.losses.mse(model_outputs, x)
@@ -200,7 +205,8 @@ class EmbeddingCAEModel(ADModel):
         
         #x = np.zeros_like(embeddings)
         #for i_embedding in range(embeddings.shape[1]):
-        x = (((X_test - np.min(X_test)) / (np.max(X_test) - np.min(X_test))) * 2*np.pi) - np.pi
+        X_test = np.clip(X_test, self.xmin, self.xmax)
+        x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
         
         model_outputs = self.AD_model.predict(x)
         ad_scores = tf.keras.losses.mse(model_outputs, x)
@@ -225,6 +231,12 @@ class EmbeddingCAEModel(ADModel):
         # Use keras save format !NOT .h5! due to depreciation
         export_path = os.path.join(out_dir, "model/saved_model.keras")
         self.AD_model.save(export_path)
+        
+        with open(out_dir+"/model/min.txt", "a") as f:
+            f.write(str(self.xmin))
+        with open(out_dir+"/model/max.txt", "a") as f:
+            f.write(str(self.xmax))
+            
         print(f"Model saved to {export_path}")
 
     @ADModel.load_decorator
@@ -236,3 +248,9 @@ class EmbeddingCAEModel(ADModel):
         """
         # Load the model
         self.AD_model = load_model(f"{out_dir}/model/saved_model.keras")
+        
+        with open(f"{out_dir}/model/min.txt") as f:
+            self.xmin = float(f.read())
+        with open(f"{out_dir}/model/max.txt") as f:
+            self.xmax = float(f.read())
+

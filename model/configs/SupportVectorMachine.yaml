@@ -1,0 +1,10 @@
+model: EmbeddingSVMModel
+run_config :
+  verbose : 2
+  debug : True
+  num_threads : 64
+
+model_config :
+  name : EmbeddingSVMModel
+
+training_config :

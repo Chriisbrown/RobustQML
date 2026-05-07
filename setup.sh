@@ -1,1 +1,2 @@
 export PYTHONPATH=$PYTHONPATH:$PWD
+export LD_LIBRARY_PATH=/usr/bin/miniconda3/lib:$LD_LIBRARY_PATH

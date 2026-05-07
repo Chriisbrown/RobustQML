@@ -21,8 +21,8 @@ def setup_gpu_memory_growth():
         
         if gpus:
             try:
-                for gpu in gpus:
-                    tf.config.experimental.set_memory_growth(gpu, True)
+                #for gpu in gpus:
+                    #tf.config.experimental.set_memory_growth(gpu, True)
                 print(f"GPU(s) found: {len(gpus)}. GPU training enabled.")
                 return True
             except RuntimeError as e:

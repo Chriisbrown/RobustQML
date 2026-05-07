@@ -539,7 +539,7 @@ class ContrastiveEmbeddingModel(ADModel):
             test = X_test[training_columns].to_numpy()
         else:
             test = X_test
-        latent = self.contrastive_model.backbone.predict(test,batch_size=1000)
+        latent = self.contrastive_model.backbone.predict(test)
         return latent
     
     def var_predict(self,X_test,training_columns) -> npt.NDArray[np.float64]:

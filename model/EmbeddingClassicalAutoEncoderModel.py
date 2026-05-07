@@ -51,12 +51,13 @@ class EmbeddingCAEModel(ADModel):
         """
         
         inputs = keras.layers.Input(shape=(self.model_config['embedding_dim'],), name='model_input')
+        bn_inputs = keras.layers.BatchNormalization()(inputs)
         for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
             if ienc == 0:
-                encoder = Dense(depthenc, activation='relu')(inputs)
+                encoder = Dense(depthenc, activation='relu')(bn_inputs)
             else:
                 encoder = Dense(depthenc, activation='relu')(encoder)
-
+        encoder = keras.layers.BatchNormalization()(encoder)
         encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
                 
         for idec, depthdec in enumerate(self.model_config['decoder_layers']):
@@ -64,7 +65,7 @@ class EmbeddingCAEModel(ADModel):
                 decoder = Dense(depthdec, activation='relu')(encoder)
             else:
                 decoder = Dense(depthdec, activation='relu')(decoder)
-        
+        decoder = keras.layers.BatchNormalization()(decoder)
         decoder = Dense(self.model_config['embedding_dim'],activation='sigmoid',name='model_output')(decoder)
                 
         self.AD_model = keras.Model(inputs=inputs, outputs=decoder)
@@ -205,12 +206,18 @@ class EmbeddingCAEModel(ADModel):
         
         #x = np.zeros_like(embeddings)
         #for i_embedding in range(embeddings.shape[1]):
+        print("one")
         X_test = np.clip(X_test, self.xmin, self.xmax)
+        print("two")
         x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
-        
-        model_outputs = self.AD_model.predict(x)
-        ad_scores = tf.keras.losses.mse(model_outputs, x)
+        x[:, ~np.isnan(x).any(axis=0)]
+        print("three")
+        model_outputs = self.AD_model(x)
+        print("four")
+        ad_scores = 1 - tf.keras.losses.mse(model_outputs, x)
+        print("five")
         ad_scores = ad_scores._numpy()
+        print("six")
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
             return ad_scores

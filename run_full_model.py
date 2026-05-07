@@ -19,6 +19,10 @@ from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
 
+import time
+
+import gc
+
 
 parser = ArgumentParser()
     
@@ -65,23 +69,24 @@ run_augment_scan = args.augment_scan
 Model_type = args.model_type
 Dataset = args.dataset
 
-models = ['CAE','IF','QAE','HW_QAE']
+models = ['CAE','SVM','QAE','HW_QAE']
 
 ######## GLOBAL PARAMETERS for ML Models ############
 if Dataset == 'C2V':
     if Model_type == 'MLP':
-        embedding_model_path = 'C2V_Contrastive_Embedding/MLP/QCD/ContrastiveEmbedding'
-        output_path = 'C2V/MLP/QCD'
+        embedding_model_path = 'C2V_Contrastive_Embedding/MLP/minbias/ContrastiveEmbedding'
+        output_path = 'C2V/MLP/minbias'
     if Model_type == 'transformer':
-        embedding_model_path = 'C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding'
-        output_path = 'C2V/transformer/QCD'
+        embedding_model_path = 'C2V_Contrastive_Embedding/Transformer/minbias/TransformerEmbedding'
+        output_path = 'C2V/transformer/minbias'
+
 if Dataset == 'AD': 
     if Model_type == 'MLP':
         embedding_model_path = 'AD_Contrastive_Embedding/MLP/all/ContrastiveEmbedding'
-        output_path = 'AD/transformer/all'
-    if Model_type == 'transformer':
-        embedding_model_path = 'C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding'
         output_path = 'AD/MLP/all'
+    if Model_type == 'transformer':
+        embedding_model_path = 'AD_Contrastive_Embedding/Transformer/all/TransformerEmbedding'
+        output_path = 'AD/transformer/all'
 
 ########## GLOBAL PARAMETERS for Collide 2V ##########
 
@@ -92,12 +97,12 @@ if Dataset == 'C2V':
 
 
     output_dict = {'CAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
-                'IF'  : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
+                'SVM'  : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
                 'QAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
                 'HW_QAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}}}
 
     augment_output_dict = {'CAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
-                            'IF'  : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
+                            'SVM' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
                             'QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
                             'HW_QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} }}
 
@@ -119,12 +124,12 @@ if Dataset == 'AD':
     augment_labels = {"background" : 0, "ato4l" :1, "background_augment":0, "ato4l_augment":1}
 
     output_dict = {'CAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
-                'IF'  : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
+                'SVM' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
                 'QAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
                 'HW_QAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}}
 
     augment_output_dict = {'CAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
-                            'IF'  : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
+                            'SVM'  : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
                             'QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
                             'HW_QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} }}
 
@@ -145,6 +150,7 @@ setup_gpu_memory_growth()
 embedding_model = fromFolder(embedding_model_path)
 
 if rerun_embedding:
+    print(f" Rerunning train embedding from: {embedding_model_path}")
     training_columns = []
     dataset_list = []
     for datasets in train_labels.keys():
@@ -174,6 +180,9 @@ background_data_frame = train_data_frame.iloc[background_indices]
 embedding_max, embedding_min = np.percentile(train_embeddings,100), np.percentile(train_embeddings,0)
 
 if retrain_AE_models:
+    
+    print("Training CAE")
+    
     CAE_model = fromYaml('model/configs/EmbeddingClassicalAEModel.yaml',output_path+'/models/CAE')
     input_shape = background_embeddings.shape[0]
     input_length = len(background_data_frame)
@@ -182,16 +191,19 @@ if retrain_AE_models:
     CAE_model.only_CAE_fit(background_embeddings)
     CAE_model.save()
     CAE_model.plot_loss()
+     
+    print("Training SVM")
     
-    IF_model = fromYaml('model/configs/IsolationTreeModel.yaml',output_path+'/models/IF')
-    os.makedirs(output_path+'/models/IF/plots', exist_ok=True)
+    SVM_model = fromYaml('model/configs/SupportVectorMachine.yaml',output_path+'/models/SVM')
+    os.makedirs(output_path+'/models/SVM/plots', exist_ok=True)
     input_shape = background_embeddings.shape[0]
     input_length = len(background_data_frame)
-    IF_model.build_model(input_shape)
-    IF_model.compile_model(input_length)
-    IF_model.fit_on_embedding(background_embeddings)
-    IF_model.save()
-    IF_model.plot_loss()
+    SVM_model.build_model(input_shape, embedding_min, embedding_max)
+    SVM_model.compile_model(input_length)
+    SVM_model.fit(background_embeddings)
+    SVM_model.save()
+    
+    print("Training QAE")
     
     QAE_model = fromYaml('model/configs/EmbeddingPennyLaneQAEModel.yaml',output_path+'/models/QAE')
     input_shape = background_embeddings.shape[0]
@@ -202,6 +214,8 @@ if retrain_AE_models:
     QAE_model.only_QAE_fit(background_embeddings)
     QAE_model.save()
     QAE_model.plot_loss()
+    
+    print("Training HW QAE")
     
     HW_QAE_model = fromYaml('model/configs/EmbeddingHWPennyLaneQAEModel.yaml',output_path+'/models/HW_QAE')
     input_shape = background_embeddings.shape[0]
@@ -214,11 +228,13 @@ if retrain_AE_models:
     HW_QAE_model.plot_loss()
     
 CAE_model = fromFolder(output_path+'/models/CAE')
-IF_model = fromFolder(output_path+'/models/IF')
+SVM_model = fromFolder(output_path+'/models/SVM')
 QAE_model = fromFolder(output_path+'/models/QAE')
 HW_QAE_model = fromFolder(output_path+'/models/HW_QAE')
 
 if rerun_embedding:
+    print(f" Rerunning test embedding from: {embedding_model_path}")
+    
     training_columns = []
     dataset_list = []
     for datasets in test_labels.keys():
@@ -242,6 +258,8 @@ test_embeddings = np.load(output_path+'/embeddings/test/test_embeddings.npy')
 test_data_frame = pd.read_pickle(output_path+'/embeddings/test/dataset.pkl')
 
 if rerun_predictions:
+    
+    print("Running testing")
 
     for label in test_labels.keys():
         print("==== Predicting for "+label+" ====")
@@ -252,8 +270,8 @@ if rerun_predictions:
 
         print("Classical Autoencoder Predict")
         output_dict['CAE'][label] = {'predictions' : CAE_model.only_CAE_predict(embeddings)}
-        print("Isolation Forest Predict")
-        output_dict['IF'][label]  = {'predictions' : IF_model.predict_on_embedding(embeddings)}
+        print("Support Vector Machine Predict")
+        output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
         print("Quantum Autoencoder Predict")
         output_dict['QAE'][label] = {'predictions' : QAE_model.only_QAE_predict(embeddings)}
         print("HW Quantum Autoencoder Predict")
@@ -267,102 +285,48 @@ with open(output_path+'/models/output_dict.pkl', 'rb') as f:
     
     
 if plot:
-    plot_histo([output_dict['CAE'][dataset]['predictions'] for dataset in output_dict['CAE'].keys()], 
-               [dataset for dataset in output_dict['CAE'].keys()], 
-               '', 
-               'AnomalyScore', 
-               'a.u.', 
-               log = 'linear', 
-               x_range=(0, 1), 
-               bins = 50)
-    os.makedirs(output_path+"/models/CAE/plots/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/CAE/plots/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
-
-    plot_histo([output_dict['IF'][dataset]['predictions'] for dataset in output_dict['IF'].keys()], 
-                [dataset for dataset in output_dict['IF'].keys()], 
-                '', 
-                'AnomalyScore', 
-                'a.u.', 
-                log = 'linear', 
-                x_range=(0, 1), 
-                bins = 50)
-    os.makedirs(output_path+"/models/IF/plots/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/IF/plots/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
-
-    plot_histo([output_dict['QAE'][dataset]['predictions'] for dataset in output_dict['QAE'].keys()], 
-                [dataset for dataset in output_dict['QAE'].keys()], 
-                '', 
-                'AnomalyScore', 
-                'a.u.', 
-                log = 'linear', 
-                x_range=(0, 1), 
-                bins = 50)
-    os.makedirs(output_path+"/models/QAE/plots/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/QAE/plots/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
-
-    plot_histo([output_dict['HW_QAE'][dataset]['predictions'] for dataset in output_dict['QAE'].keys()], 
-                [dataset for dataset in output_dict['HW_QAE'].keys()], 
-                '', 
-                'AnomalyScore', 
-                'a.u.', 
-                log = 'linear', 
-                x_range=(0, 1), 
-                bins = 50)
-    os.makedirs(output_path+"/models/HW_QAE/plots/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/HW_QAE/plots/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
+    print("Plotting output histograms")
     
-    os.makedirs(output_path+"/plots/testing/", exist_ok=True)
-    for label in test_labels.keys():
-        plot_histo([output_dict['CAE'][label]['predictions'],output_dict['IF'][label]['predictions'],output_dict['QAE'][label]['predictions'],output_dict['HW_QAE'][label]['predictions']], 
-                ['CAE','IF','QAE','HW_QAE'], 
+    for model in models:
+    
+        plot_histo([output_dict[model][dataset]['predictions'] for dataset in output_dict[model].keys()], 
+                [dataset for dataset in output_dict[model].keys()], 
                 '', 
                 'AnomalyScore', 
                 'a.u.', 
                 log = 'linear', 
                 x_range=(0, 1), 
                 bins = 50)
-        plt.savefig(f"{output_path}/plots/testing/{label}_outputscores.png", bbox_inches='tight')
-        plt.close()
+        os.makedirs(f"{output_path}/models/{model}/plots/testing/", exist_ok=True)
+        plt.savefig(f"{output_path}/models/{model}/plots/testing/outputscores.png", bbox_inches='tight')
+        plt.close() 
+
+    
+    print("Plotting output ROCs")
+    
+    for model in models:
         
-        
-    ROC_curve([output_dict['CAE'][background_name]['predictions'] for dataset in output_dict['CAE'].keys()],
-            [output_dict['CAE'][dataset]['predictions'] for dataset in output_dict['CAE'].keys()],
-            test_labels)
-    plt.savefig(f"{output_path}/models/CAE/plots/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
+        ROC_curve([output_dict[model][background_name]['predictions'] for dataset in output_dict[model].keys()],
+                [output_dict[model][dataset]['predictions'] for dataset in output_dict[model].keys()],
+                test_labels)
+        plt.savefig(f"{output_path}/models/{model}/plots/testing/ROC.png", bbox_inches='tight')
+        plt.close() 
 
-    ROC_curve([output_dict['IF'][background_name]['predictions'] for dataset in output_dict['IF'].keys()],
-            [output_dict['IF'][dataset]['predictions'] for dataset in output_dict['IF'].keys()],
-            test_labels)
-    plt.savefig(f"{output_path}/models/IF/plots/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
-
-    ROC_curve([output_dict['QAE'][background_name]['predictions'] for dataset in output_dict['QAE'].keys()],
-            [output_dict['QAE'][dataset]['predictions'] for dataset in output_dict['QAE'].keys()],
-            test_labels)
-    plt.savefig(f"{output_path}/models/QAE/plots/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
-
-    ROC_curve([output_dict['HW_QAE'][background_name]['predictions'] for dataset in output_dict['HW_QAE'].keys()],
-            [output_dict['HW_QAE'][dataset]['predictions'] for dataset in output_dict['HW_QAE'].keys()],
-            test_labels)
-    plt.savefig(f"{output_path}/models/HW_QAE/plots/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
     
     for label in test_labels.keys():
-        ROC_curve([output_dict['CAE'][background_name]['predictions'],output_dict['IF'][background_name]['predictions'],output_dict['QAE'][background_name]['predictions'],output_dict['HW_QAE'][background_name]['predictions']],
-                [output_dict['CAE'][label]['predictions'],output_dict['IF'][label]['predictions'],output_dict['QAE'][label]['predictions'],output_dict['HW_QAE'][label]['predictions']],
-                ['CAE','IF','QAE','HW_QAE'])
         
+        ROC_curve([output_dict[model][background_name]['predictions'] for model in models],
+                  [output_dict[model][label]['predictions'] for model in models],
+                  models)
+        os.makedirs(f"{output_path}/plots/testing/", exist_ok=True)
         plt.savefig(f"{output_path}/plots/testing/{label}_ROC.png", bbox_inches='tight')
         plt.close() 
         
         
-if rerun_predictions:
+if rerun_augment_predictions and rerun_embedding:
+    
+    print(f" Rerunning augment embedding from: {embedding_model_path}")
+    
     training_columns = []
     dataset_list = []
 
@@ -395,6 +359,9 @@ augment_embeddings = np.load(output_path+'/embeddings/augment/augment_embeddings
 augment_data_frame = pd.read_pickle(output_path+'/embeddings/augment/dataset.pkl')
 
 if plot:
+    
+    print("Plotting augment latent spaces")
+    
     background_indices = np.where(test_data_frame["event_label"] == 0)
     test_index = np.random.randint(0, len(background_indices[0]), size=60000)
     background_test_embeddings = test_embeddings[background_indices[0][test_index]]
@@ -445,6 +412,8 @@ if plot:
 
 if rerun_augment_predictions:
     
+    print("Rerunning augment predictions")
+    
     for label in augment_labels.keys():
         print("==== Predicting for "+label+" ====")
         
@@ -460,8 +429,8 @@ if rerun_augment_predictions:
 
         print("Classical Autoencoder Predict")
         augment_output_dict['CAE'][label] = {'predictions' : CAE_model.only_CAE_predict(embeddings)}
-        print("Isolation Forest Predict")
-        augment_output_dict['IF'][label]  = {'predictions' : IF_model.predict_on_embedding(embeddings)}
+        print("Support Vector Machine Predict")
+        augment_output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
         print("Quantum Autoencoder Predict")
         augment_output_dict['QAE'][label] = {'predictions' : QAE_model.only_QAE_predict(embeddings)}
         print("HW Quantum Autoencoder Predict")
@@ -472,61 +441,28 @@ if rerun_augment_predictions:
 
 with open(output_path+'/models/output_augment_dict.pkl', 'rb') as f:
     augment_output_dict = pickle.load(f)
-print(augment_output_dict)
     
 if plot:
-    plot_histo([augment_output_dict['CAE'][dataset]['predictions'] for dataset in augment_output_dict['CAE'].keys()], 
-               [dataset for dataset in augment_output_dict['CAE'].keys()], 
-               '', 
-               'AnomalyScore', 
-               'a.u.', 
-               log = 'linear', 
-               x_range=(0, 1), 
-               bins = 50)
-    os.makedirs(output_path+"/models/CAE/plots/augment/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/CAE/plots/augment/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
-
-    plot_histo([augment_output_dict['IF'][dataset]['predictions'] for dataset in augment_output_dict['IF'].keys()], 
-                [dataset for dataset in augment_output_dict['IF'].keys()], 
+    print("Plotting augment output histograms")
+    
+    for model in models:
+        plot_histo([augment_output_dict[model][dataset]['predictions'] for dataset in augment_output_dict[model].keys()], 
+                [dataset for dataset in augment_output_dict[model].keys()], 
                 '', 
                 'AnomalyScore', 
                 'a.u.', 
                 log = 'linear', 
                 x_range=(0, 1), 
                 bins = 50)
-    os.makedirs(output_path+"/models/IF/plots/augment/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/IF/plots/augment/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
+        os.makedirs(f"{output_path}/models/{model}/plots/augment/testing/", exist_ok=True)
+        plt.savefig(f"{output_path}/models/{model}/plots/augment/testing/outputscores.png", bbox_inches='tight')
+        plt.close() 
 
-    plot_histo([augment_output_dict['QAE'][dataset]['predictions'] for dataset in augment_output_dict['QAE'].keys()], 
-                [dataset for dataset in augment_output_dict['QAE'].keys()], 
-                '', 
-                'AnomalyScore', 
-                'a.u.', 
-                log = 'linear', 
-                x_range=(0, 1), 
-                bins = 50)
-    os.makedirs(output_path+"/models/QAE/plots/augment/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/QAE/plots/augment/testing/outputscores.png", bbox_inches='tight')
-    plt.close() 
-
-    plot_histo([augment_output_dict['HW_QAE'][dataset]['predictions'] for dataset in augment_output_dict['QAE'].keys()], 
-                [dataset for dataset in augment_output_dict['HW_QAE'].keys()], 
-                '', 
-                'AnomalyScore', 
-                'a.u.', 
-                log = 'linear', 
-                x_range=(0, 1), 
-                bins = 50)
-    os.makedirs(output_path+"/models/HW_QAE/plots/augment/testing/", exist_ok=True)
-    plt.savefig(f"{output_path}/models/HW_QAE/plots/augment/testing/outputscores.png", bbox_inches='tight')
-    plt.close()
     
     os.makedirs(output_path+"/plots/augment/testing/", exist_ok=True)
     for label in augment_labels.keys():
-        plot_histo([augment_output_dict['CAE'][label]['predictions'],augment_output_dict['IF'][label]['predictions'],augment_output_dict['QAE'][label]['predictions'],augment_output_dict['HW_QAE'][label]['predictions']], 
-                ['CAE','IF','QAE','HW_QAE'], 
+        plot_histo([augment_output_dict[model][label]['predictions'] for model in models], 
+                models, 
                 '', 
                 'AnomalyScore', 
                 'a.u.', 
@@ -535,43 +471,29 @@ if plot:
                 bins = 50)
         plt.savefig(f"{output_path}/plots/augment/testing/{label}_outputscores.png", bbox_inches='tight')
         plt.close()  
+    
+    print("Plotting augment ROCs")
+    
+    for model in models:
         
-        
-    ROC_curve([augment_output_dict['CAE'][background_name]['predictions'] for dataset in augment_output_dict['CAE'].keys()],
-          [augment_output_dict['CAE'][dataset]['predictions'] for dataset in augment_output_dict['CAE'].keys()],
-          augment_labels)
-    plt.savefig(f"{output_path}/models/CAE/plots/augment/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
-
-    ROC_curve([augment_output_dict['IF'][background_name]['predictions'] for dataset in augment_output_dict['IF'].keys()],
-            [augment_output_dict['IF'][dataset]['predictions'] for dataset in augment_output_dict['IF'].keys()],
+        ROC_curve([augment_output_dict[model][background_name]['predictions'] for dataset in augment_output_dict[model].keys()],
+            [augment_output_dict[model][dataset]['predictions'] for dataset in augment_output_dict[model].keys()],
             augment_labels)
-    plt.savefig(f"{output_path}/models/IF/plots/augment/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
+        plt.savefig(f"{output_path}/models/{model}/plots/augment/testing/ROC.png", bbox_inches='tight')
+        plt.close() 
 
-    ROC_curve([augment_output_dict['QAE'][background_name]['predictions'] for dataset in augment_output_dict['QAE'].keys()],
-            [augment_output_dict['QAE'][dataset]['predictions'] for dataset in augment_output_dict['QAE'].keys()],
-            augment_labels)
-    plt.savefig(f"{output_path}/models/QAE/plots/augment/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
-
-    ROC_curve([augment_output_dict['HW_QAE'][background_name]['predictions'] for dataset in augment_output_dict['HW_QAE'].keys()],
-            [augment_output_dict['HW_QAE'][dataset]['predictions'] for dataset in augment_output_dict['HW_QAE'].keys()],
-            augment_labels)
-    plt.savefig(f"{output_path}/models/HW_QAE/plots/augment/testing/ROC.png", bbox_inches='tight')
-    plt.close() 
     
     
     for label in augment_labels.keys():
         if 'augment' in label:
-            ROC_curve([augment_output_dict['CAE'][background_augment_name]['predictions'],augment_output_dict['IF'][background_augment_name]['predictions'],augment_output_dict['QAE'][background_augment_name]['predictions'],augment_output_dict['HW_QAE'][background_augment_name]['predictions']],
-                    [augment_output_dict['CAE'][label]['predictions'],augment_output_dict['IF'][label]['predictions'],augment_output_dict['QAE'][label]['predictions'],augment_output_dict['HW_QAE'][label]['predictions']],
-                    ['CAE','IF','QAE','HW_QAE'])
+            ROC_curve([augment_output_dict[model][background_augment_name]['predictions'] for model in models],
+                      [augment_output_dict[model][label]['predictions'] for model in models],
+                      models)
             
         else:
-            ROC_curve([augment_output_dict['CAE'][background_name]['predictions'],augment_output_dict['IF'][background_name]['predictions'],augment_output_dict['QAE'][background_name]['predictions'],augment_output_dict['HW_QAE'][background_name]['predictions']],
-                    [augment_output_dict['CAE'][label]['predictions'],augment_output_dict['IF'][label]['predictions'],augment_output_dict['QAE'][label]['predictions'],augment_output_dict['HW_QAE'][label]['predictions']],
-                    ['CAE','IF','QAE','HW_QAE'])
+            ROC_curve([augment_output_dict[model][background_name]['predictions'] for model in models],
+                      [augment_output_dict[model][label]['predictions'] for model in models],
+                      models)
         
         plt.savefig(f"{output_path}/plots/augment/testing/{label}_ROC.png", bbox_inches='tight')
         plt.close() 
@@ -587,82 +509,164 @@ for model in models:
     background_wd = scipy.stats.wasserstein_distance(background,background_a)
     sig_wd = scipy.stats.wasserstein_distance(sig,sig_a)
     
+    auc_loss_list = ROC_curve([background, background_a],
+                              [sig,     sig_a],
+                              [background_name,signal_name],plot=False)
+    
     print(model)
     print(f"Wasserstein Distance for background samples {background_wd}")
     print(f"Wasserstein Distance for Signal sample {sig_wd}")
+    print(f"Non Augmented ROC {auc_loss_list[0]}")
+    print(f"Augmented ROC {auc_loss_list[1]}")
     
     
 if run_augment_scan:
+    
+    num_samples = 2000
+    num_CV = 10
+    print("Running augment scan")
+    
     os.makedirs(output_path+"/augment/", exist_ok=True)
-    f = open(output_path+"/augment/scan.csv",'w')
-    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_augmented ,background_wd,signal_wd")
-    
-    non_augmented_model_results = {background_name:{},signal_name:{}}
-    for datasets in [background_name,signal_name]:
-            data_test = DataSet.fromH5(input_path+datasets+'/test/')
-            data_test_dataframe = data_test.data_frame.sample(n=1000)
-            
-            data_test.set_label(test_labels[datasets])
+    f = open(output_path+"/augment/scan_classical_only.csv",'w')
+    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,embedding_wd, embedding_wd_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
 
-            embeddings = embedding_model.encoder_predict(data_test.data_frame,data_test.training_columns) 
-                      
-            temp_non_augmented_model_results = {'CAE':0,'IF':0,'QAE':0,'HW_QAE':0}
-                        
-            temp_non_augmented_model_results['CAE'] = CAE_model.only_CAE_predict(embeddings)
-            temp_non_augmented_model_results['IF'] = IF_model.predict_on_embedding(embeddings)
-            temp_non_augmented_model_results['QAE'] = QAE_model.only_QAE_predict(embeddings)
-            temp_non_augmented_model_results['HW_QAE']= HW_QAE_model.only_QAE_predict(embeddings)  
-            
-            non_augmented_model_results[datasets] = temp_non_augmented_model_results
+    non_augmented_model_results = {background_name: {'CAE':[],#'SVM':[],
+                                                     #'QAE':[],'HW_QAE':[],
+                                                     'embeddings':[]},
+                                   signal_name: {'CAE':[],#'SVM':[],
+                                                 #'QAE':[],'HW_QAE':[],
+                                                 'embeddings':[]}}
     
+    background_test = DataSet.fromH5(input_path+background_name+'/test/')
     
-    for smear_percent in [0.0001,0.001,0.01,0.1,1.0]:
-        augmented_model_results = {background_name:{},signal_name:{}}
+    signal_test = DataSet.fromH5(input_path+signal_name+'/test/')
+    
+    dataset_dict = {background_name: background_test, signal_name: signal_test}
+    
+    for iCV in range(num_CV):
+        start_time = time.time()
         for datasets in [background_name,signal_name]:
-            data_test = DataSet.fromH5(input_path+datasets+'/test/')
-            data_test_dataframe = data_test.data_frame.sample(n=1000)
-            
-            #augment_test.drop_a_soft_one('jet')
-            data_test.eta_smear(smear_percent)
-            data_test.pt_smear(smear_percent)
-            data_test.phi_smear(smear_percent)
-            #data_test.phi_rotate()
-            data_test.normalise()
+                temp_dataset = dataset_dict[datasets]
+                temp_dataset.normalise()
+                data_test_dataframe = temp_dataset.data_frame
+                
+                temp_dataset.set_label(test_labels[datasets])
 
-            data_test.set_label(test_labels[datasets])
+                embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
 
-            embeddings = embedding_model.encoder_predict(data_test.data_frame,data_test.training_columns) 
-                      
-            model_results = {'CAE':0,'IF':0,'QAE':0,'HW_QAE':0}
-                        
-            model_results['CAE'] = CAE_model.only_CAE_predict(embeddings)
-            model_results['IF'] = IF_model.predict_on_embedding(embeddings)
-            model_results['QAE'] = QAE_model.only_QAE_predict(embeddings)
-            model_results['HW_QAE']= HW_QAE_model.only_QAE_predict(embeddings)  
+                non_augmented_model_results[datasets]['CAE'].append(CAE_model.only_CAE_predict(embeddings))
+                #non_augmented_model_results[datasets]['SVM'].append(SVM_model.predict(embeddings))
+                #non_augmented_model_results[datasets]['QAE'].append(QAE_model.only_QAE_predict(embeddings))
+                #non_augmented_model_results[datasets]['HW_QAE'].append(HW_QAE_model.only_QAE_predict(embeddings))  
+                non_augmented_model_results[datasets]['embeddings'].append(embeddings)
+                
+                gc.collect()
+                
+        print(f"Cross validation {iCV} background finishing in {time.time() - start_time} s")
+
+    for smear_percent in [0.0001,0.001,0.01,0.1,1.0]:
+        
+        augmented_model_results = {background_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    #'SVM':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    #'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    #'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    'embeddings':{'embeddings':0,'WD':[]}},
+                                   signal_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                #'SVM':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                #'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                #'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                'embeddings':{'embeddings':0,'WD':[]}}}
+        
+        for iCV in range(num_CV): 
+            start_time = time.time()
+            for datasets in [background_name,signal_name]:
+                temp_dataset =  dataset_dict[datasets]
+                #augment_test.drop_a_soft_one('jet')
+                temp_dataset.eta_smear(smear_percent)
+                temp_dataset.pt_smear(smear_percent)
+                temp_dataset.phi_smear(smear_percent)
+                #data_test.phi_rotate()
+                temp_dataset.normalise()
+                
+                data_test_dataframe = temp_dataset.data_frame
+
+                temp_dataset.set_label(test_labels[datasets])
+                print(f"Data set loading {iCV} {datasets} {smear_percent} finishing in {time.time() - start_time} s")
+                start_time = time.time()
+                augmented_embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
+                print(f"Embedding predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                start_time = time.time()
+                print(augmented_embeddings.shape)
+                augmented_model_results[datasets]['CAE']['predictions'] = (CAE_model.only_CAE_predict(augmented_embeddings))
+                print(f"CAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                start_time = time.time()
+                #augmented_model_results[datasets]['SVM']['predictions'] = (SVM_model.predict(augmented_embeddings))
+                #print(f"SVM predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                #augmented_model_results[datasets]['QAE']['predictions'] = (QAE_model.only_QAE_predict(augmented_embeddings))
+                #augmented_model_results[datasets]['HW_QAE']['predictions'] = (HW_QAE_model.only_QAE_predict(augmented_embeddings))  
+                augmented_model_results[datasets]['embeddings']['embeddings'] = (augmented_embeddings)
+                gc.collect()
             
-            augmented_model_results[datasets] = model_results
+            for model in non_augmented_model_results[background_name].keys():
+                if model == 'embeddings':
+                    continue
+                start_time = time.time()
+                background_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
+                sig_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
+                #print(f"wasserstein_distance {iCV} {model} finishing in {time.time() - start_time} s")
+                #print(non_augmented_model_results[background_name][model][iCV])
+                #print(augmented_model_results[background_name][model]['predictions'])
+                auc_loss_list = ROC_curve([non_augmented_model_results[background_name][model][iCV], augmented_model_results[background_name][model]['predictions']],
+                                        [non_augmented_model_results[signal_name][model][iCV],     augmented_model_results[signal_name][model]['predictions']],
+                                        [background_name,signal_name],plot=False)
+                
+                augmented_model_results[background_name][model]['augmented_ROC'].append( auc_loss_list[1])
+                augmented_model_results[background_name][model]['non_augmented_ROC'].append( auc_loss_list[0])
+                augmented_model_results[background_name][model]['WD_signal'].append( sig_wd)
+                augmented_model_results[background_name][model]['WD_background'].append( background_wd )
+                
             
-        for model in model_results.keys():
+            embedding_wd = scipy.stats.wasserstein_distance_nd(non_augmented_model_results[background_name]['embeddings'][iCV],augmented_model_results[background_name]['embeddings']['embeddings'])
+            augmented_model_results[background_name]['embeddings']['WD'].append(embedding_wd)
             
-            background_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[background_name][model],model_results[background_name][model])
-            sig_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[signal_name][model],model_results[signal_name][model])
-            
-            auc_loss_list = ROC_curve([non_augmented_model_results[background_name][model], augmented_model_results[background_name][model]],
-                                      [non_augmented_model_results[signal_name][model],     augmented_model_results[signal_name][model]],
-                                      [background_name,signal_name],plot=False)
-            
+        for model in non_augmented_model_results[background_name].keys():   
+            if model == 'embeddings':
+                    continue 
+                
+            non_augment_roc = sum(augmented_model_results[background_name][model]['non_augmented_ROC']) /num_CV
+            non_augment_roc_err = np.std(augmented_model_results[background_name][model]['non_augmented_ROC'])
+            augment_roc = sum(augmented_model_results[background_name][model]['augmented_ROC'])/num_CV
+            augment_roc_err = np.std(augmented_model_results[background_name][model]['augmented_ROC']) 
+            embedding_WD = sum(augmented_model_results[background_name]['embeddings']['WD'])/num_CV
+            embedding_WD_err = np.std(augmented_model_results[background_name]['embeddings']['WD'])
+            background_WD = sum(augmented_model_results[background_name][model]['WD_background'])/num_CV
+            background_WD_err = np.std(augmented_model_results[background_name][model]['WD_background'])
+            signal_WD = sum(augmented_model_results[background_name][model]['WD_signal'])/num_CV
+            signal_WD_err = np.std(augmented_model_results[background_name][model]['WD_signal'])
             
             
             print(model)
             print(smear_percent)
-            print(f"Non Augmented ROC {auc_loss_list[0]}")
-            print(f"Augmented ROC {auc_loss_list[1]}")
+            print(f"Non Augmented ROC {non_augment_roc} +/- {non_augment_roc_err}")
+            print(f"Augmented ROC {augment_roc} +/- {augment_roc_err}")
             print("Wasserstein Distance")
-            print(f"Background sample {background_wd}")
-            print(f"Signal sample {sig_wd}")
+            print(f"Embedding movement {embedding_WD} +/- {embedding_WD_err}")
+            print(f"Background sample {background_WD} +/- {background_WD_err}")
+            print(f"Signal sample {signal_WD} +/- {signal_WD_err}")
             print("============")
-            
-            f.write(f"{model},{smear_percent},{auc_loss_list[0]},{auc_loss_list[1]} ,{background_wd},{sig_wd}")
+                    
+            f.write(f"{model},{smear_percent},"
+                    f"{non_augment_roc},"
+                    f"{non_augment_roc_err},"
+                    f"{augment_roc} , "
+                    f"{augment_roc_err},"
+                    f"{embedding_WD} , "
+                    f"{embedding_WD_err}, "
+                    f"{background_WD}, " 
+                    f"{background_WD_err} , "
+                    f"{signal_WD} , "
+                    f"{signal_WD_err}\n")
+    
     f.close()
             
         

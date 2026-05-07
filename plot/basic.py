@@ -5,7 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import mplhep as hep
 import numpy as np
-import umap
+#import umap
 
 from plot import style
 

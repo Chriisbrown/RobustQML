@@ -1,0 +1,4 @@
+- same number of samples in training QAE and classical 
+- Scan of number of training samples up to max QAE and max classical
+- More samples for classical evaluation
+- Discrete degradation, remove sections of the detector

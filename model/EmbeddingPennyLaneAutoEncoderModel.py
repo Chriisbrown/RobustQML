@@ -337,7 +337,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         for ievent in range(len(x)):
             predictions.append(qml.math.mean(self.autoencoder(self.circuit_weights,  x[ievent] )))
         ad_scores = np.array(predictions ) 
-        ad_scores = 1 - ad_scores/0.5
+        ad_scores = ad_scores/0.5
         return ad_scores
     
     def only_QAE_predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
@@ -362,7 +362,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         for ievent in range(len(x)):
             predictions.append(qml.math.mean(self.autoencoder(self.circuit_weights,  x[ievent] )))
         ad_scores = np.array(predictions ) 
-        ad_scores = 1 - ad_scores/0.5
+        ad_scores = ad_scores/0.5
         return ad_scores
     
     

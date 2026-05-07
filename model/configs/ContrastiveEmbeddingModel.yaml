@@ -9,7 +9,7 @@ model_config :
   projection_dim : 8
   projection_blocks : 3
   backbone_layers : [32,16]
-  latent_dim : 4
+  latent_dim : 8
   encoder_layers : [8,6]
   decoder_layers : [6,8]
 

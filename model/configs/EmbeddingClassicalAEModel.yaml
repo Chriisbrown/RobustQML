@@ -8,7 +8,7 @@ model_config :
   name : autoencoder
   encoder_layers : [8,6]
   decoder_layers : [6,8]
-  latent_dim : 4
+  latent_dim : 8
   embedding_dim: 8
 
 training_config :

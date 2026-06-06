@@ -69,7 +69,7 @@ run_augment_scan = args.augment_scan
 Model_type = args.model_type
 Dataset = args.dataset
 
-models = ['CAE','SVM','QAE','HW_QAE']
+models = ['CAE','QAE','HW_QAE']
 
 ######## GLOBAL PARAMETERS for ML Models ############
 if Dataset == 'C2V':
@@ -82,11 +82,11 @@ if Dataset == 'C2V':
 
 if Dataset == 'AD': 
     if Model_type == 'MLP':
-        embedding_model_path = 'AD_Contrastive_Embedding/MLP/all/ContrastiveEmbedding'
-        output_path = 'AD/MLP/all'
+        embedding_model_path = 'AD_Contrastive_Embedding/MLP/background/ContrastiveEmbedding'
+        output_path = 'AD/MLP/background'
     if Model_type == 'transformer':
-        embedding_model_path = 'AD_Contrastive_Embedding/Transformer/all/TransformerEmbedding'
-        output_path = 'AD/transformer/all'
+        embedding_model_path = 'AD_Contrastive_Embedding/Transformer/background/TransformerEmbedding'
+        output_path = 'AD/transformer/background'
 
 ########## GLOBAL PARAMETERS for Collide 2V ##########
 
@@ -97,16 +97,16 @@ if Dataset == 'C2V':
 
 
     output_dict = {'CAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
-                'SVM'  : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
+                #'SVM'  : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
                 'QAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
                 'HW_QAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}}}
 
     augment_output_dict = {'CAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
-                            'SVM' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
+                            #'SVM' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
                             'QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
                             'HW_QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} }}
 
-    input_path = '/eos/user/c/cebrown/RobustQML/training_data/'
+    input_path = '/scratch/RobustQML_Datasets/C2V_dataset'
 
     background_name = 'minbias'
     background_augment_name = background_name + '_augment'
@@ -124,16 +124,16 @@ if Dataset == 'AD':
     augment_labels = {"background" : 0, "ato4l" :1, "background_augment":0, "ato4l_augment":1}
 
     output_dict = {'CAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
-                'SVM' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
+                #'SVM' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
                 'QAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
                 'HW_QAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}}
 
     augment_output_dict = {'CAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
-                            'SVM'  : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
+                            #'SVM'  : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
                             'QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
                             'HW_QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} }}
 
-    input_path = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'
+    input_path = '/scratch/RobustQML_Datasets/AD_dataset/'
 
     background_name = 'background'
     background_augment_name = background_name + '_augment'
@@ -192,16 +192,16 @@ if retrain_AE_models:
     CAE_model.save()
     CAE_model.plot_loss()
      
-    print("Training SVM")
+    # print("Training SVM")
     
-    SVM_model = fromYaml('model/configs/SupportVectorMachine.yaml',output_path+'/models/SVM')
-    os.makedirs(output_path+'/models/SVM/plots', exist_ok=True)
-    input_shape = background_embeddings.shape[0]
-    input_length = len(background_data_frame)
-    SVM_model.build_model(input_shape, embedding_min, embedding_max)
-    SVM_model.compile_model(input_length)
-    SVM_model.fit(background_embeddings)
-    SVM_model.save()
+    # SVM_model = fromYaml('model/configs/SupportVectorMachine.yaml',output_path+'/models/SVM')
+    # os.makedirs(output_path+'/models/SVM/plots', exist_ok=True)
+    # input_shape = background_embeddings.shape[0]
+    # input_length = len(background_data_frame)
+    # SVM_model.build_model(input_shape, embedding_min, embedding_max)
+    # SVM_model.compile_model(input_length)
+    # SVM_model.fit(background_embeddings)
+    # SVM_model.save()
     
     print("Training QAE")
     
@@ -228,7 +228,7 @@ if retrain_AE_models:
     HW_QAE_model.plot_loss()
     
 CAE_model = fromFolder(output_path+'/models/CAE')
-SVM_model = fromFolder(output_path+'/models/SVM')
+#SVM_model = fromFolder(output_path+'/models/SVM')
 QAE_model = fromFolder(output_path+'/models/QAE')
 HW_QAE_model = fromFolder(output_path+'/models/HW_QAE')
 
@@ -270,8 +270,8 @@ if rerun_predictions:
 
         print("Classical Autoencoder Predict")
         output_dict['CAE'][label] = {'predictions' : CAE_model.only_CAE_predict(embeddings)}
-        print("Support Vector Machine Predict")
-        output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
+        # print("Support Vector Machine Predict")
+        # output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
         print("Quantum Autoencoder Predict")
         output_dict['QAE'][label] = {'predictions' : QAE_model.only_QAE_predict(embeddings)}
         print("HW Quantum Autoencoder Predict")
@@ -429,8 +429,8 @@ if rerun_augment_predictions:
 
         print("Classical Autoencoder Predict")
         augment_output_dict['CAE'][label] = {'predictions' : CAE_model.only_CAE_predict(embeddings)}
-        print("Support Vector Machine Predict")
-        augment_output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
+        # print("Support Vector Machine Predict")
+        # augment_output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
         print("Quantum Autoencoder Predict")
         augment_output_dict['QAE'][label] = {'predictions' : QAE_model.only_QAE_predict(embeddings)}
         print("HW Quantum Autoencoder Predict")
@@ -531,10 +531,10 @@ if run_augment_scan:
     f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,embedding_wd, embedding_wd_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
 
     non_augmented_model_results = {background_name: {'CAE':[],#'SVM':[],
-                                                     #'QAE':[],'HW_QAE':[],
+                                                     'QAE':[],'HW_QAE':[],
                                                      'embeddings':[]},
                                    signal_name: {'CAE':[],#'SVM':[],
-                                                 #'QAE':[],'HW_QAE':[],
+                                                 'QAE':[],'HW_QAE':[],
                                                  'embeddings':[]}}
     
     background_test = DataSet.fromH5(input_path+background_name+'/test/')
@@ -556,8 +556,8 @@ if run_augment_scan:
 
                 non_augmented_model_results[datasets]['CAE'].append(CAE_model.only_CAE_predict(embeddings))
                 #non_augmented_model_results[datasets]['SVM'].append(SVM_model.predict(embeddings))
-                #non_augmented_model_results[datasets]['QAE'].append(QAE_model.only_QAE_predict(embeddings))
-                #non_augmented_model_results[datasets]['HW_QAE'].append(HW_QAE_model.only_QAE_predict(embeddings))  
+                non_augmented_model_results[datasets]['QAE'].append(QAE_model.only_QAE_predict(embeddings))
+                non_augmented_model_results[datasets]['HW_QAE'].append(HW_QAE_model.only_QAE_predict(embeddings))  
                 non_augmented_model_results[datasets]['embeddings'].append(embeddings)
                 
                 gc.collect()
@@ -568,13 +568,13 @@ if run_augment_scan:
         
         augmented_model_results = {background_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                     #'SVM':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                    #'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                    #'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                     'embeddings':{'embeddings':0,'WD':[]}},
                                    signal_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                 #'SVM':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                #'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                #'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                 'embeddings':{'embeddings':0,'WD':[]}}}
         
         for iCV in range(num_CV): 
@@ -600,11 +600,13 @@ if run_augment_scan:
                 augmented_model_results[datasets]['CAE']['predictions'] = (CAE_model.only_CAE_predict(augmented_embeddings))
                 print(f"CAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 start_time = time.time()
-                #augmented_model_results[datasets]['SVM']['predictions'] = (SVM_model.predict(augmented_embeddings))
-                #print(f"SVM predict {iCV} {datasets} finishing in {time.time() - start_time} s")
-                #augmented_model_results[datasets]['QAE']['predictions'] = (QAE_model.only_QAE_predict(augmented_embeddings))
-                #augmented_model_results[datasets]['HW_QAE']['predictions'] = (HW_QAE_model.only_QAE_predict(augmented_embeddings))  
-                augmented_model_results[datasets]['embeddings']['embeddings'] = (augmented_embeddings)
+                # augmented_model_results[datasets]['SVM']['predictions'] = (SVM_model.predict(augmented_embeddings))
+                # print(f"SVM predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                augmented_model_results[datasets]['QAE']['predictions'] = (QAE_model.only_QAE_predict(augmented_embeddings))
+                print(f"QAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                start_time = time.time()
+                augmented_model_results[datasets]['HW_QAE']['predictions'] = (HW_QAE_model.only_QAE_predict(augmented_embeddings))  
+                print(f"HW QAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 gc.collect()
             
             for model in non_augmented_model_results[background_name].keys():
@@ -613,9 +615,6 @@ if run_augment_scan:
                 start_time = time.time()
                 background_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
                 sig_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
-                #print(f"wasserstein_distance {iCV} {model} finishing in {time.time() - start_time} s")
-                #print(non_augmented_model_results[background_name][model][iCV])
-                #print(augmented_model_results[background_name][model]['predictions'])
                 auc_loss_list = ROC_curve([non_augmented_model_results[background_name][model][iCV], augmented_model_results[background_name][model]['predictions']],
                                         [non_augmented_model_results[signal_name][model][iCV],     augmented_model_results[signal_name][model]['predictions']],
                                         [background_name,signal_name],plot=False)
@@ -624,10 +623,6 @@ if run_augment_scan:
                 augmented_model_results[background_name][model]['non_augmented_ROC'].append( auc_loss_list[0])
                 augmented_model_results[background_name][model]['WD_signal'].append( sig_wd)
                 augmented_model_results[background_name][model]['WD_background'].append( background_wd )
-                
-            
-            embedding_wd = scipy.stats.wasserstein_distance_nd(non_augmented_model_results[background_name]['embeddings'][iCV],augmented_model_results[background_name]['embeddings']['embeddings'])
-            augmented_model_results[background_name]['embeddings']['WD'].append(embedding_wd)
             
         for model in non_augmented_model_results[background_name].keys():   
             if model == 'embeddings':
@@ -637,8 +632,6 @@ if run_augment_scan:
             non_augment_roc_err = np.std(augmented_model_results[background_name][model]['non_augmented_ROC'])
             augment_roc = sum(augmented_model_results[background_name][model]['augmented_ROC'])/num_CV
             augment_roc_err = np.std(augmented_model_results[background_name][model]['augmented_ROC']) 
-            embedding_WD = sum(augmented_model_results[background_name]['embeddings']['WD'])/num_CV
-            embedding_WD_err = np.std(augmented_model_results[background_name]['embeddings']['WD'])
             background_WD = sum(augmented_model_results[background_name][model]['WD_background'])/num_CV
             background_WD_err = np.std(augmented_model_results[background_name][model]['WD_background'])
             signal_WD = sum(augmented_model_results[background_name][model]['WD_signal'])/num_CV
@@ -650,7 +643,6 @@ if run_augment_scan:
             print(f"Non Augmented ROC {non_augment_roc} +/- {non_augment_roc_err}")
             print(f"Augmented ROC {augment_roc} +/- {augment_roc_err}")
             print("Wasserstein Distance")
-            print(f"Embedding movement {embedding_WD} +/- {embedding_WD_err}")
             print(f"Background sample {background_WD} +/- {background_WD_err}")
             print(f"Signal sample {signal_WD} +/- {signal_WD_err}")
             print("============")
@@ -660,8 +652,6 @@ if run_augment_scan:
                     f"{non_augment_roc_err},"
                     f"{augment_roc} , "
                     f"{augment_roc_err},"
-                    f"{embedding_WD} , "
-                    f"{embedding_WD_err}, "
                     f"{background_WD}, " 
                     f"{background_WD_err} , "
                     f"{signal_WD} , "

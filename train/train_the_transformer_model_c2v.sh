@@ -1,12 +1,12 @@
-#python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o minbias/TransformerEmbedding -s minbias 
-#python plot/test.py -o minbias/TransformerEmbedding 
-#python plot/plot_latent.py -o minbias/TransformerEmbedding 
-#python augmentations/augment_test.py -o minbias/TransformerEmbedding 
+python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o minbias/TransformerEmbedding -s minbias 
+python plot/test.py -o minbias/TransformerEmbedding 
+python plot/plot_latent.py -o minbias/TransformerEmbedding 
+python augmentations/augment_test.py -o minbias/TransformerEmbedding 
 
-# python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o QCD/TransformerEmbedding -s QCD 
-# python plot/test.py -o QCD/TransformerEmbedding 
-# python plot/plot_latent.py -o QCD/TransformerEmbedding 
-# python augmentations/augment_test.py -o QCD/TransformerEmbedding 
+python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o QCD/TransformerEmbedding -s QCD 
+python plot/test.py -o QCD/TransformerEmbedding 
+python plot/plot_latent.py -o QCD/TransformerEmbedding 
+python augmentations/augment_test.py -o QCD/TransformerEmbedding 
 
 
 
@@ -42,11 +42,11 @@
 
 #python train/train.py -y model/configs/EmbeddingClassicalAEModel.yaml -o QCD/minbiasTrfEmbeddingCAE/ -s QCD -m C2V_Contrastive_Embedding/Transformer/minbias/TransformerEmbedding 
 #python plot/test.py  -o QCD/minbiasTrfEmbeddingCAE/ -m C2V_Contrastive_Embedding/Transformer/minbias/TransformerEmbedding 
-python augmentations/augment_test.py -o QCD/minbiasTrfEmbeddingCAE/ -m C2V_Contrastive_Embedding/Transformer/minbias/TransformerEmbedding 
+# python augmentations/augment_test.py -o QCD/minbiasTrfEmbeddingCAE/ -m C2V_Contrastive_Embedding/Transformer/minbias/TransformerEmbedding 
 
-python train/train.py -y model/configs/EmbeddingClassicalAEModel.yaml -o QCD/QCDTrfEmbeddingCAE/ -s QCD -m C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding 
-python plot/test.py  -o QCD/QCDTrfEmbeddingCAE/  -m C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding 
-python augmentations/augment_test.py -o QCD/QCDTrfEmbeddingCAE/  -m C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding 
+# python train/train.py -y model/configs/EmbeddingClassicalAEModel.yaml -o QCD/QCDTrfEmbeddingCAE/ -s QCD -m C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding 
+# python plot/test.py  -o QCD/QCDTrfEmbeddingCAE/  -m C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding 
+# python augmentations/augment_test.py -o QCD/QCDTrfEmbeddingCAE/  -m C2V_Contrastive_Embedding/Transformer/QCD/TransformerEmbedding 
 
 
 

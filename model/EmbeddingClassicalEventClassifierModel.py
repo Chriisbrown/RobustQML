@@ -2,7 +2,7 @@ import os
 
 import numpy.typing as npt
 
-from model.AnomalyDetectionModel import ADModelFactory, ADModel
+from model.EventClassifierModel import ECModelFactory, ECModel
 from data.EOSdataset import DataSet
 import pandas as pd
 
@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from plot.basic import loss_history, plot_2d
 
-from model.common import fromFolder
+from model.common import ECfromFolder, fromFolder
 
 
 import matplotlib.pyplot as plt
@@ -28,13 +28,13 @@ from plot import style
 import numpy as np
 
 # Register the model in the factory with the string name corresponding to what is in the yaml config
-@ADModelFactory.register('EmbeddingCAEModel')
-class EmbeddingCAEModel(ADModel):
+@ECModelFactory.register('EmbeddingCECModel')
+class EmbeddingCECModel(ECModel):
 
-    """EmbeddingCAEModel class
+    """EmbeddingCECModel class
 
     Args:
-        EmbeddingCAEModel (_type_): Base class of a PennyLaneQAEModel
+        EmbeddingCECModel (_type_): Base class of a Event Classifier Model
     """
     
     def __init__(self,output_dir):
@@ -43,7 +43,7 @@ class EmbeddingCAEModel(ADModel):
     def load_embedding_model(self,model_folder):
         self.embedding_model = fromFolder(model_folder)
 
-    def build_model(self, inputs_shape: tuple, xmin,xmax):
+    def build_model(self, inputs_shape: tuple,output_shape: int, xmin,xmax):
         """build model override
 
         Args:
@@ -57,18 +57,11 @@ class EmbeddingCAEModel(ADModel):
                 encoder = Dense(depthenc, activation='relu')(bn_inputs)
             else:
                 encoder = Dense(depthenc, activation='relu')(encoder)
-        encoder = keras.layers.BatchNormalization()(encoder)
         encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
+
+        output = Dense(output_shape,activation='sigmoid',name='model_output')(encoder)
                 
-        for idec, depthdec in enumerate(self.model_config['decoder_layers']):
-            if idec == 0:
-                decoder = Dense(depthdec, activation='relu')(encoder)
-            else:
-                decoder = Dense(depthdec, activation='relu')(decoder)
-        decoder = keras.layers.BatchNormalization()(decoder)
-        decoder = Dense(self.model_config['embedding_dim'],activation='sigmoid',name='model_output')(decoder)
-                
-        self.AD_model = keras.Model(inputs=inputs, outputs=decoder)
+        self.EC_model = keras.Model(inputs=inputs, outputs=output)
         
         self.xmin = xmin
         self.xmax = xmax
@@ -89,10 +82,10 @@ class EmbeddingCAEModel(ADModel):
         ]
 
         # compile the tensorflow model setting the loss and metrics
-        self.AD_model.compile(
+        self.EC_model.compile(
             optimizer='adam',
-            loss='mae',
-            metrics= ['mae', 'mean_squared_error'],
+            loss='binaray_cross_entropy',
+            metrics= ['accuracy'],
         )
 
         
@@ -100,6 +93,7 @@ class EmbeddingCAEModel(ADModel):
     def fit(
         self,
         X_train: DataSet,
+        y_train,
         training_columns: list,
     ):
         """Fit the model to the training dataset
@@ -117,9 +111,9 @@ class EmbeddingCAEModel(ADModel):
                   
                   
         keras.config.disable_traceback_filtering()
-        history = self.AD_model.fit(
+        history = self.EC_model.fit(
             x_train,
-            x_train,
+            y_train,
             epochs=self.training_config['epochs'],
             batch_size=self.training_config['batch_size'],
             verbose=self.run_config['verbose'],
@@ -130,9 +124,10 @@ class EmbeddingCAEModel(ADModel):
         
         self.history = history.history
         
-    def only_CAE_fit(
+    def only_CEC_fit(
         self,
         X_train: DataSet,
+        y_train,
     ):
         """Fit the model to the training dataset
 
@@ -146,9 +141,9 @@ class EmbeddingCAEModel(ADModel):
                   
                   
         keras.config.disable_traceback_filtering()
-        history = self.AD_model.fit(
+        history = self.EC_model.fit(
             x_train,
-            x_train,
+            y_train,
             epochs=self.training_config['epochs'],
             batch_size=self.training_config['batch_size'],
             verbose=self.run_config['verbose'],
@@ -160,7 +155,7 @@ class EmbeddingCAEModel(ADModel):
         self.history = history.history
         
 
-    def predict(self, X_test, training_columns,return_score = True) -> npt.NDArray[np.float64]:
+    def predict(self, X_test, training_columns) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
@@ -178,22 +173,14 @@ class EmbeddingCAEModel(ADModel):
         """
         
         embeddings = self.embedding_model.encoder_predict(test,training_columns) 
-        #x = np.zeros_like(embeddings)
-        #for i_embedding in range(embeddings.shape[1]):
         embeddings = np.clip(embeddings, self.xmin, self.xmax)
         x = (((embeddings - self.xmin) / (self.xmax- self.xmin)) * 2*np.pi) - np.pi
         
-        model_outputs = self.AD_model.predict(x)
-        ad_scores = tf.keras.losses.mse(model_outputs, x)
-        ad_scores = ad_scores._numpy()
-        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
-        if return_score:
-            return ad_scores
-        else:
-            return model_outputs
+        model_outputs = self.EC_model.predict(x)
+        return model_outputs
         
         
-    def only_CAE_predict(self, X_test,return_score = True) -> npt.NDArray[np.float64]:
+    def only_CEC_predict(self, X_test) -> npt.NDArray[np.float64]:
 
         """Predict method for model
 
@@ -206,18 +193,12 @@ class EmbeddingCAEModel(ADModel):
 
         X_test = np.clip(X_test, self.xmin, self.xmax)
         x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
-        model_outputs = self.AD_model(x)
-        ad_scores = 1 - tf.keras.losses.mse(model_outputs, x)
-        ad_scores = ad_scores._numpy()
-        ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
-        if return_score:
-            return ad_scores
-        else:
-            return model_outputs
+        model_outputs = self.EC_model(x)
+        return model_outputs
     
     
     
-    @ADModel.save_decorator
+    @ECModel.save_decorator
     def save(self, out_dir: str = "None"):
         """Save the model file
 
@@ -228,7 +209,7 @@ class EmbeddingCAEModel(ADModel):
         os.makedirs(os.path.join(out_dir, 'model'), exist_ok=True)
         # Use keras save format !NOT .h5! due to depreciation
         export_path = os.path.join(out_dir, "model/saved_model.keras")
-        self.AD_model.save(export_path)
+        self.EC_model.save(export_path)
         
         with open(out_dir+"/model/min.txt", "a") as f:
             f.write(str(self.xmin))
@@ -237,7 +218,7 @@ class EmbeddingCAEModel(ADModel):
             
         print(f"Model saved to {export_path}")
 
-    @ADModel.load_decorator
+    @ECModel.load_decorator
     def load(self, out_dir: str = "None"):
         """Load the model file
 
@@ -245,7 +226,7 @@ class EmbeddingCAEModel(ADModel):
             out_dir (str, optional): Where to load it if not in the output_directory. Defaults to "None".
         """
         # Load the model
-        self.AD_model = load_model(f"{out_dir}/model/saved_model.keras")
+        self.EC_model = load_model(f"{out_dir}/model/saved_model.keras")
         
         with open(f"{out_dir}/model/min.txt") as f:
             self.xmin = float(f.read())

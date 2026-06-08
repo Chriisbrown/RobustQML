@@ -1,23 +1,17 @@
-model: VICRegModel
+model: EmbeddingCECModel
 run_config :
   verbose : 2
   debug : True
   num_threads : 64
 
 model_config :
-  name : VICReg
-  projection_dim : 8
-  projection_blocks : 3
-  backbone_layers : [32,16]
-  latent_dim : 4
-  encoder_layers : [8,6]
-  decoder_layers : [6,8]
+  name : classifier
+  latent_dim : 8
 
 training_config :
-  constrastive_epochs : 10
   epochs : 20
-  batch_size : 2560
-  learning_rate : 0.0001
+  batch_size : 1024
+  learning_rate : 0.005
   validation_split : 0.1
 
   EarlyStopping_patience : 10

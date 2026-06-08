@@ -1,12 +1,12 @@
-python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o background/TransformerEmbedding -s background --ad_dataset
-python plot/test.py -o background/TransformerEmbedding --ad_dataset
-python plot/plot_latent.py -o background/TransformerEmbedding --ad_dataset
-python augmentations/augment_test.py -o background/TransformerEmbedding --ad_dataset
+python train/train.py -y model/configs/ContastiveEmbeddingModel_sup.yaml -o background/MLPEmbedding -s background --ad_dataset
+python plot/test.py -o background/MLPEmbedding --ad_dataset
+python plot/plot_latent.py -o background/MLPEmbedding --ad_dataset
+python augmentations/augment_test.py -o background/MLPEmbedding --ad_dataset
 
-python train/train.py -y model/configs/TransformerContrastiveEmbeddingModel.yaml -o all/TransformerEmbedding -s all --ad_dataset
-python plot/test.py -o all/TransformerEmbedding --ad_dataset
-python plot/plot_latent.py -o all/TransformerEmbedding --ad_dataset
-python augmentations/augment_test.py -o all/TransformerEmbedding --ad_dataset
+python train/train.py -y model/configs/ContastiveEmbeddingModel_sup.yaml -o all/MLPEmbedding -s all --ad_dataset
+python plot/test.py -o all/MLPEmbedding --ad_dataset
+python plot/plot_latent.py -o all/MLPEmbedding --ad_dataset
+python augmentations/augment_test.py -o all/MLPEmbedding --ad_dataset
 
 
 

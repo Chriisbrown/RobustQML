@@ -40,17 +40,17 @@ if __name__ == "__main__":
     args = parser.parse_args()    
 
     if args.ad_dataset:
-        background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background/test/')
+        background = DataSet.fromH5('/scratch/RobustQML_Datasets/AD_dataset/background/test/')
         output_dict = {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}
         labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
-        path = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'
+        path = '/scratch/RobustQML_Datasets/AD_dataset/'
         background_name = 'background'
         
     else:
-        background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
+        background = DataSet.fromH5('/scratch/RobustQML_Datasets/C2V_dataset/minbias/test')
         output_dict = {"minbias" : {} , "QCD_HT50toInf" :{}, "HH_4b" : {}, 'HH_bbgammagamma':{},'HH_bbtautau':{},'QCD_HT50tobb':{}}
         labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
-        path = '/eos/user/c/cebrown/RobustQML/training_data/'
+        path = '/scratch/RobustQML_Datasets/C2V_dataset/'
         background_name = 'minbias'
 
 
@@ -250,8 +250,8 @@ if __name__ == "__main__":
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
         plt.close() 
     
-    if args.events > 0:
-        pass
-    else:
-        distances = model.distance(full_data_frame[training_columns].sample(frac=0.5),training_columns)
-        clusters(distances,labels=np.array(full_data_frame['event_label']),plot_dir=plot_dir, label_to_names={v: k for k, v in labels.items()})
+    # if args.events > 0:
+    #     pass
+    # else:
+    #     distances = model.distance(full_data_frame[training_columns].sample(frac=0.5),training_columns)
+    #     clusters(distances,labels=np.array(full_data_frame['event_label']),plot_dir=plot_dir, label_to_names={v: k for k, v in labels.items()})

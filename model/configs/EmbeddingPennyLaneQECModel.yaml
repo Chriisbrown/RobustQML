@@ -1,0 +1,15 @@
+model: EmbeddingPennyLaneQECModel
+run_config :
+  verbose : 2
+  debug : True
+  num_threads : 64
+
+model_config :
+  name : q
+  latent_dim : 1
+  embedding_dim : 8
+
+training_config :
+  epochs : 50
+  batch_size : 1000
+  learning_rate : 0.2

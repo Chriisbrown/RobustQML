@@ -271,12 +271,12 @@ if __name__ == "__main__":
     if args.ad_dataset:
         event_labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
         event_label_style = {"background" : 'SM background', "ato4l" :'A -> 4l', "hChToTauNu" : 'H+ -> Tau Nu', "hToTauTau" : 'h -> Tau Tau', "leptoquark" : 'leptoquark', "blackbox": 'blackbox'}
-        path = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'
+        path = '/scratch/RobustQML_Datasets/AD_dataset/'
         
     else:
         event_labels = {'minbias' :0,'QCD_HT50toInf' : 1,'HH_4b' : 2,'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
         event_label_style = {'minbias':'Minbias', 'QCD_HT50toInf': 'QCD_HT50toInf', 'HH_4b':'HH->bbbb','HH_bbgammagamma':'HH_bbgammagamma','HH_bbtautau':'HH_bbtautau','QCD_HT50tobb':'QCD_HT50tobb' }
-        path = '/eos/user/c/cebrown/RobustQML/training_data/'
+        path = '/scratch/RobustQML_Datasets/C2V_dataset/'
         
     latent_vector = []
     event_label_vector = []
@@ -285,10 +285,10 @@ if __name__ == "__main__":
     for datasets in event_labels.keys():
         data_test = DataSet.fromH5(path+datasets+'/test/')
         data_test.normalise()
-        data_test_dataframe = data_test.data_frame.sample(n=1000)
+        data_test_dataframe = data_test.data_frame.sample(n=10000)
         latent_representations = model.encoder_predict(data_test_dataframe,data_test.training_columns)
         latent_vector.append(latent_representations)
-        event_label_vector.append(np.tile(event_labels[datasets],1000))
+        event_label_vector.append(np.tile(event_labels[datasets],10000))
         
     latent_vector = np.concatenate(latent_vector, axis=0)
     event_label_vector = np.concatenate(event_label_vector, axis=0)

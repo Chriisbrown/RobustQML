@@ -31,7 +31,7 @@ parser.add_argument(
     )
 
 parser.add_argument(
-        '-a', '--retrain_AE', action='store_true'
+        '-a', '--retrain_EC', action='store_true'
     )
 
 parser.add_argument(
@@ -61,7 +61,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 rerun_embedding = args.rerun_embedding
-retrain_AE_models = args.retrain_AE
+retrain_AE_models = args.retrain_CE
 rerun_predictions = args.run_predictions
 rerun_augment_predictions = args.run_augment_predictions
 plot = args.plot
@@ -69,41 +69,39 @@ run_augment_scan = args.augment_scan
 Model_type = args.model_type
 Dataset = args.dataset
 
-models = ['CAE','QAE','HW_QAE']
+models = ['CEC','QEC']
 
 ######## GLOBAL PARAMETERS for ML Models ############
 if Dataset == 'C2V':
     if Model_type == 'MLP':
-        embedding_model_path = 'embeddings/C2V/minbias/MLP/'
-        output_path = 'AnomalyDetection/C2V/minbias/MLP'
+        embedding_model_path = 'C2V_Contrastive_Embedding/MLP/all/ContrastiveEmbedding'
+        output_path = 'C2V/MLP/all'
     if Model_type == 'transformer':
-        embedding_model_path = 'embeddings/C2V/minbias/Transformer/'
-        output_path = 'AnomalyDetection/C2V/minbias/Transformer'
+        embedding_model_path = 'C2V_Contrastive_Embedding/Transformer/all/TransformerEmbedding'
+        output_path = 'C2V/transformer/all'
 
 if Dataset == 'AD': 
     if Model_type == 'MLP':
-        embedding_model_path = 'embeddings/AD/background/MLP'
-        output_path = 'AnomalyDetection/AD/background/MLP'
+        embedding_model_path = 'AD_Contrastive_Embedding/MLP/all/ContrastiveEmbedding'
+        output_path = 'AD/MLP/all'
     if Model_type == 'transformer':
-        embedding_model_path = 'embeddings/AD/background/Transformer'
-        output_path = 'AnomalyDetection/AD/background/Transformer'
+        embedding_model_path = 'AD_Contrastive_Embedding/Transformer/all/TransformerEmbedding'
+        output_path = 'AD/transformer/all'
 
 ########## GLOBAL PARAMETERS for Collide 2V ##########
 
 if Dataset == 'C2V':
-    train_labels = {"QCD_HT50tobb":2,"QCD_HT50toInf":1,"minbias":0}
-    test_labels = {"minbias" : 0, "QCD_HT50toInf" :1, "HH_4b" : 2, 'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
+    train_labels = {"HH_4b":1,"minbias":0}
+    test_labels = {"minbias" : 0,"HH_4b" : 1}
     augment_labels = {"minbias" : 0, "HH_4b" : 2, "minbias_augment" : 0, "HH_4b_augment" : 2}
 
 
-    output_dict = {'CAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
-                   'QAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}},
-                   'HW_QAE' : {"minbias" : {}, "QCD_HT50toInf" :{}, "HH_4b" : {}, "HH_bbgammagamma" : {}, "HH_bbtautau" : {}, "QCD_HT50tobb": {}}}
-
+    output_dict = {'CAE' : {"minbias" : {}, "HH_4b" : {}},
+                   'QAE' : {"minbias" : {}, "HH_4b" : {}},
+                    }
     augment_output_dict = {'CAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
                            'QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
-                           'HW_QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} }}
-
+                    }
     input_path = '/scratch/RobustQML_Datasets/C2V_dataset'
 
     background_name = 'minbias'
@@ -117,18 +115,15 @@ if Dataset == 'C2V':
 ########## GLOBAL PARAMETERS for Collide AD ##########
 if Dataset == 'AD':
 
-    train_labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, 'hToTauTau':3,'leptoquark':4}
-    test_labels =  {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, 'hToTauTau':3,'leptoquark':4, 'blackbox':5}
+    train_labels = {"background" : 0, "ato4l" :1}
+    test_labels =  {"background" : 0, "ato4l" :1}
     augment_labels = {"background" : 0, "ato4l" :1, "background_augment":0, "ato4l_augment":1}
 
-    output_dict = {'CAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
-                   'QAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}},
-                   'HW_QAE' : {"background" : {}, "ato4l" :{}, "hChToTauNu" : {}, "hToTauTau" : {}, "leptoquark" : {}, "blackbox": {}}}
-
+    output_dict = {'CAE' : {"background" : {}, "ato4l" :{}},
+                   'QAE' : {"background" : {}, "ato4l" :{}}}
+    
     augment_output_dict = {'CAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
-                           'QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
-                           'HW_QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} }}
-
+                            'QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} }}
     input_path = '/scratch/RobustQML_Datasets/AD_dataset/'
 
     background_name = 'background'
@@ -169,64 +164,35 @@ if rerun_embedding:
 train_embeddings = np.load(output_path+'/embeddings/train/train_embeddings.npy')
 train_data_frame = pd.read_pickle(output_path+'/embeddings/train/dataset.pkl')
 
-background_indices = np.where(train_data_frame["event_label"] == 0)
-background_embeddings = train_embeddings[background_indices]
-background_data_frame = train_data_frame.iloc[background_indices]
-
 embedding_max, embedding_min = np.percentile(train_embeddings,100), np.percentile(train_embeddings,0)
 
 if retrain_AE_models:
     
-    print("Training CAE")
+    print("Training CEC")
     
-    CAE_model = fromYaml('model/configs/EmbeddingClassicalAEModel.yaml',output_path+'/models/CAE')
-    input_shape = background_embeddings.shape[0]
-    input_length = len(background_data_frame)
-    CAE_model.build_model(input_shape,embedding_min, embedding_max )
-    CAE_model.compile_model(input_length)
-    CAE_model.only_CAE_fit(background_embeddings)
-    CAE_model.save()
-    CAE_model.plot_loss()
-     
-    # print("Training SVM")
-    
-    # SVM_model = fromYaml('model/configs/SupportVectorMachine.yaml',output_path+'/models/SVM')
-    # os.makedirs(output_path+'/models/SVM/plots', exist_ok=True)
-    # input_shape = background_embeddings.shape[0]
-    # input_length = len(background_data_frame)
-    # SVM_model.build_model(input_shape, embedding_min, embedding_max)
-    # SVM_model.compile_model(input_length)
-    # SVM_model.fit(background_embeddings)
-    # SVM_model.save()
-    
+    CEC_model = fromYaml('model/configs/EmbeddingClassicalCECModel.yaml',output_path+'/models/CEC')
+    input_shape = train_embeddings.shape[0]
+    input_length = len(train_embeddings)
+    CEC_model.build_model(input_shape, 1 ,embedding_min, embedding_max )
+    CEC_model.compile_model(input_length)
+    CEC_model.only_CEC_fit(train_embeddings,train_data_frame["event_label"].to_numpy())
+    CEC_model.save()
+    CEC_model.plot_loss()
+        
     print("Training QAE")
     
-    QAE_model = fromYaml('model/configs/EmbeddingPennyLaneQAEModel.yaml',output_path+'/models/QAE')
-    input_shape = background_embeddings.shape[0]
-    input_length = len(background_data_frame)
-    input_length = len(background_data_frame)
-    QAE_model.build_model(input_shape,embedding_min, embedding_max )
-    QAE_model.compile_model(input_length)
-    QAE_model.only_QAE_fit(background_embeddings)
-    QAE_model.save()
-    QAE_model.plot_loss()
+    QEC_model = fromYaml('model/configs/EmbeddingPennyLaneQECModel.yaml',output_path+'/models/QEC')
+    input_shape = train_embeddings.shape[0]
+    input_length = len(train_embeddings)
+    QEC_model.build_model(input_shape, 1 ,embedding_min, embedding_max )
+    QEC_model.compile_model(input_length)
+    QEC_model.only_QAE_fit(train_embeddings),train_data_frame["event_label"].to_numpy()
+    QEC_model.save()
+    QEC_model.plot_loss()
     
-    print("Training HW QAE")
     
-    HW_QAE_model = fromYaml('model/configs/EmbeddingHWPennyLaneQAEModel.yaml',output_path+'/models/HW_QAE')
-    input_shape = background_embeddings.shape[0]
-    input_length = len(background_data_frame)
-    input_length = len(background_data_frame)
-    HW_QAE_model.build_model(input_shape,embedding_min, embedding_max )
-    HW_QAE_model.compile_model(input_length)
-    HW_QAE_model.only_QAE_fit(background_embeddings)
-    HW_QAE_model.save()
-    HW_QAE_model.plot_loss()
-    
-CAE_model = fromFolder(output_path+'/models/CAE')
-#SVM_model = fromFolder(output_path+'/models/SVM')
-QAE_model = fromFolder(output_path+'/models/QAE')
-HW_QAE_model = fromFolder(output_path+'/models/HW_QAE')
+CEC_model = fromFolder(output_path+'/models/CEC')
+QEC_model = fromFolder(output_path+'/models/QEC')
 
 if rerun_embedding:
     print(f" Rerunning test embedding from: {embedding_model_path}")
@@ -264,14 +230,11 @@ if rerun_predictions:
         embeddings = test_embeddings[indices[0][test_index]]
         data_frame = test_data_frame.iloc[indices[0][test_index]]
 
-        print("Classical Autoencoder Predict")
-        output_dict['CAE'][label] = {'predictions' : CAE_model.only_CAE_predict(embeddings)}
-        # print("Support Vector Machine Predict")
-        # output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
-        print("Quantum Autoencoder Predict")
-        output_dict['QAE'][label] = {'predictions' : QAE_model.only_QAE_predict(embeddings)}
-        print("HW Quantum Autoencoder Predict")
-        output_dict['HW_QAE'][label] = {'predictions' : HW_QAE_model.only_QAE_predict(embeddings)}    
+        print("Classical Classifier Predict")
+        output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
+        print("Quantum Classifier Predict")
+        output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings)}
+  
     
     with open(output_path+'/models/output_dict.pkl', 'wb') as f:
         pickle.dump(output_dict, f)
@@ -288,7 +251,7 @@ if plot:
         plot_histo([output_dict[model][dataset]['predictions'] for dataset in output_dict[model].keys()], 
                 [dataset for dataset in output_dict[model].keys()], 
                 '', 
-                'AnomalyScore', 
+                'Classifier Score', 
                 'a.u.', 
                 log = 'linear', 
                 x_range=(0, 1), 
@@ -383,16 +346,16 @@ if plot:
         
     plot_PCA(event_principle_components, event_label_vector,((event_xmin, event_xmax),(event_ymin, event_ymax)), {'test':'test','augment':'augment'}, f"{output_path}/embeddings/plots/{background_name}")
 
-    hh4b_indices = np.where(test_data_frame["event_label"] == 2)
-    test_index = np.random.randint(0, len(hh4b_indices[0]), size=60000)
-    hh4b_test_embeddings = test_embeddings[hh4b_indices[0][test_index]]
+    signal_indices = np.where(test_data_frame["event_label"] == 2)
+    test_index = np.random.randint(0, len(signal_indices[0]), size=60000)
+    signal_test_embeddings = test_embeddings[signal_indices[0][test_index]]
 
-    hh4b_indices = np.where(augment_data_frame["event_label"] == 2)
-    test_index = np.random.randint(0, len(hh4b_indices[0]), size=60000)
-    hh4b_augment_embeddings = augment_embeddings[hh4b_indices[0][test_index]]
+    signal_indices = np.where(augment_data_frame["event_label"] == 2)
+    test_index = np.random.randint(0, len(signal_indices[0]), size=60000)
+    signal_augment_embeddings = augment_embeddings[signal_indices[0][test_index]]
         
-    latent_vector = np.concatenate([hh4b_test_embeddings,hh4b_augment_embeddings], axis=0)
-    event_label_vector = np.concatenate([np.zeros(len(hh4b_test_embeddings)),np.ones(len(hh4b_augment_embeddings))], axis=0)
+    latent_vector = np.concatenate([signal_test_embeddings,signal_augment_embeddings], axis=0)
+    event_label_vector = np.concatenate([np.zeros(len(signal_test_embeddings)),np.ones(len(signal_augment_embeddings))], axis=0)
 
     os.makedirs(f"{output_path}/embeddings/plots/{signal_name}", exist_ok=True)
 
@@ -423,14 +386,10 @@ if rerun_augment_predictions:
             embeddings = test_embeddings[indices[0][test_index]]
             
 
-        print("Classical Autoencoder Predict")
-        augment_output_dict['CAE'][label] = {'predictions' : CAE_model.only_CAE_predict(embeddings)}
-        # print("Support Vector Machine Predict")
-        # augment_output_dict['SVM'][label]  = {'predictions' : SVM_model.predict(embeddings)}
-        print("Quantum Autoencoder Predict")
-        augment_output_dict['QAE'][label] = {'predictions' : QAE_model.only_QAE_predict(embeddings)}
-        print("HW Quantum Autoencoder Predict")
-        augment_output_dict['HW_QAE'][label] = {'predictions' : HW_QAE_model.only_QAE_predict(embeddings)}  
+        print("Classical Classifier Predict")
+        augment_output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
+        print("Quantum Classifier Predict")
+        augment_output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings)}
         
     with open(output_path+'/models/output_augment_dict.pkl', 'wb') as f:
         pickle.dump(augment_output_dict, f)
@@ -445,7 +404,7 @@ if plot:
         plot_histo([augment_output_dict[model][dataset]['predictions'] for dataset in augment_output_dict[model].keys()], 
                 [dataset for dataset in augment_output_dict[model].keys()], 
                 '', 
-                'AnomalyScore', 
+                'Classifier Score', 
                 'a.u.', 
                 log = 'linear', 
                 x_range=(0, 1), 
@@ -460,7 +419,7 @@ if plot:
         plot_histo([augment_output_dict[model][label]['predictions'] for model in models], 
                 models, 
                 '', 
-                'AnomalyScore', 
+                'Classifier Score', 
                 'a.u.', 
                 log = 'linear', 
                 x_range=(0, 1), 
@@ -526,11 +485,11 @@ if run_augment_scan:
     f = open(output_path+"/augment/scan_classical_only.csv",'w')
     f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,embedding_wd, embedding_wd_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
 
-    non_augmented_model_results = {background_name: {'CAE':[],#'SVM':[],
-                                                     'QAE':[],'HW_QAE':[],
+    non_augmented_model_results = {background_name: {'CEC':[],
+                                                     'QEC':[],
                                                      'embeddings':[]},
-                                   signal_name: {'CAE':[],#'SVM':[],
-                                                 'QAE':[],'HW_QAE':[],
+                                   signal_name: {'CEC':[],
+                                                 'QEC':[],
                                                  'embeddings':[]}}
     
     background_test = DataSet.fromH5(input_path+background_name+'/test/')
@@ -550,10 +509,8 @@ if run_augment_scan:
 
                 embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
 
-                non_augmented_model_results[datasets]['CAE'].append(CAE_model.only_CAE_predict(embeddings))
-                #non_augmented_model_results[datasets]['SVM'].append(SVM_model.predict(embeddings))
-                non_augmented_model_results[datasets]['QAE'].append(QAE_model.only_QAE_predict(embeddings))
-                non_augmented_model_results[datasets]['HW_QAE'].append(HW_QAE_model.only_QAE_predict(embeddings))  
+                non_augmented_model_results[datasets]['CEC'].append(CEC_model.only_CAE_predict(embeddings))
+                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QAE_predict(embeddings))
                 non_augmented_model_results[datasets]['embeddings'].append(embeddings)
                 
                 gc.collect()
@@ -562,15 +519,11 @@ if run_augment_scan:
 
     for smear_percent in [0.0001,0.001,0.01,0.1,1.0]:
         
-        augmented_model_results = {background_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                    #'SVM':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                    'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                    'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+        augmented_model_results = {background_name:{'CEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    'QEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                     'embeddings':{'embeddings':0,'WD':[]}},
-                                   signal_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                #'SVM':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                   signal_name:{'CEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                'QEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                 'embeddings':{'embeddings':0,'WD':[]}}}
         
         for iCV in range(num_CV): 
@@ -593,16 +546,11 @@ if run_augment_scan:
                 print(f"Embedding predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 start_time = time.time()
                 print(augmented_embeddings.shape)
-                augmented_model_results[datasets]['CAE']['predictions'] = (CAE_model.only_CAE_predict(augmented_embeddings))
-                print(f"CAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                augmented_model_results[datasets]['CEC']['predictions'] = (CEC_model.only_CEC_predict(augmented_embeddings))
+                print(f"CEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 start_time = time.time()
-                # augmented_model_results[datasets]['SVM']['predictions'] = (SVM_model.predict(augmented_embeddings))
-                # print(f"SVM predict {iCV} {datasets} finishing in {time.time() - start_time} s")
-                augmented_model_results[datasets]['QAE']['predictions'] = (QAE_model.only_QAE_predict(augmented_embeddings))
-                print(f"QAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
-                start_time = time.time()
-                augmented_model_results[datasets]['HW_QAE']['predictions'] = (HW_QAE_model.only_QAE_predict(augmented_embeddings))  
-                print(f"HW QAE predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings))
+                print(f"QEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 gc.collect()
             
             for model in non_augmented_model_results[background_name].keys():

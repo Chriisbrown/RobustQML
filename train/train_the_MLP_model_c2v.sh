@@ -1,12 +1,12 @@
-python train/train.py -y model/configs/MLPContrastiveEmbeddingModel.yaml -o minbias/ContrastiveEmbedding -s minbias 
-python plot/test.py -o minbias/ContrastiveEmbedding 
-python plot/plot_latent.py -o minbias/ContrastiveEmbedding 
-python augmentations/augment_test.py -o minbias/ContrastiveEmbedding 
+python train/train.py -y model/configs/ContrastiveEmbeddingModel_sup.yaml -o minbias/MLPEmbedding -s minbias 
+python plot/test.py -o minbias/MLPEmbedding 
+python plot/plot_latent.py -o minbias/MLPEmbedding 
+python augmentations/augment_test.py -o minbias/MLPEmbedding 
 
-python train/train.py -y model/configs/MLPContrastiveEmbeddingModel.yaml -o QCD/ContrastiveEmbedding -s QCD 
-python plot/test.py -o QCD/TransformerEmbedding 
-python plot/plot_latent.py -o QCD/TransformerEmbedding 
-python augmentations/augment_test.py -o QCD/TransformerEmbedding 
+python train/train.py -y model/configs/ContrastiveEmbeddingModel_sup.yaml -o QCD/MLPEmbedding -s QCD 
+python plot/test.py -o QCD/MLPEmbedding 
+python plot/plot_latent.py -o QCD/MLPEmbedding 
+python augmentations/augment_test.py -o QCD/MLPEmbedding 
 
 
 

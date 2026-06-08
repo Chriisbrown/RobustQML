@@ -41,15 +41,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.ad_dataset:
-      background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background/test')
-      background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/background/augment')
-      signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/blackbox/test')
-      signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/AD_dataset/processed/blackbox/augment')
+      background = DataSet.fromH5('/scratch/RobustQML_Datasets/AD_dataset/background/test')
+      background_augment = DataSet.fromH5('/scratch/RobustQML_Datasets/AD_dataset/background/augment')
+      signal_augment = DataSet.fromH5('/scratch/RobustQML_Datasets/AD_dataset/ato4l/test')
+      signal = DataSet.fromH5('/scratch/RobustQML_Datasets/AD_dataset/ato4l/augment')
     else:
-      background = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/test')
-      background_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/minbias/augment')
-      signal_augment = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/augment')
-      signal = DataSet.fromH5('/eos/user/c/cebrown/RobustQML/training_data/HH_4b/test')
+      background = DataSet.fromH5('/scratch/RobustQML_Datasets/C2V_dataset/minbias/test')
+      background_augment = DataSet.fromH5('/scratch/RobustQML_Datasets/C2V_dataset/minbias/augment')
+      signal_augment = DataSet.fromH5('/scratch/RobustQML_Datasets/C2V_dataset/HH_4b/augment')
+      signal = DataSet.fromH5('/scratch/RobustQML_Datasets/C2V_dataset/HH_4b/test')
 
         
     

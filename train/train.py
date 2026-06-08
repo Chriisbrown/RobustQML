@@ -19,7 +19,7 @@ def train(model ,normalise,scenario,embedding_model, ad_dataset):
         if scenario == 'all':
             labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, 'hToTauTau':3,'leptoquark':4}
         
-        path = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'
+        path = '/scratch/RobustQML_Datasets/AD_dataset/'
         
     else:
         if scenario == 'minbias':
@@ -31,7 +31,7 @@ def train(model ,normalise,scenario,embedding_model, ad_dataset):
         if scenario == 'qcd_but':
             labels = {"QCD_HT50toInf" :1,'QCD_HT50tobb':5}
             
-        path = '/eos/user/c/cebrown/RobustQML/training_data/'
+        path = '/scratch/RobustQML_Datasets/C2V_dataset/'
         
         
     dataset_list = []

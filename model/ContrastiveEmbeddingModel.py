@@ -514,7 +514,6 @@ class ContrastiveEmbeddingModel(ADModel):
         x = tf.cast(test, tf.float32)
         x_latent = self.contrastive_model.backbone(x)
         mean, logvar = self.vae_model.encode(x_latent)
-        mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.vae_model.reparameterize(mean, logvar)
         x_logit = self.vae_model.decode(z)
         ad_scores = tf.keras.losses.mse(x_logit,x_latent)

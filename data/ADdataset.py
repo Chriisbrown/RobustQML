@@ -412,7 +412,7 @@ class DataSet:
         self.data_frame[eta_columns] = self.data_frame[eta_columns]*-1
         
         
-    def drop_a_soft_one(self,object_type):
+    def drop_a_soft_one(self,object_type,threshold=20):
         
         match object_type:
             case 'jet':
@@ -433,11 +433,10 @@ class DataSet:
         for i,event in enumerate(pt):
             event = np.trim_zeros(event)
             if len(event) > 1:
-
                 delta_pt = self.data_frame[pt_column+str(np.argmin(event))][i]
                 delta_phi = self.data_frame[phi_column+str(np.argmin(event))][i]
                 
-                if delta_pt < 20:
+                if delta_pt < threshold:
                 
                     et = self.data_frame['L1T_PUPPIMET_MET'][i]
                     phi = self.data_frame['L1T_PUPPIMET_Phi'][i]

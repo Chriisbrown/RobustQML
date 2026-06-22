@@ -2,3 +2,9 @@
 - Scan of number of training samples up to max QAE and max classical
 - More samples for classical evaluation
 - Discrete degradation, remove sections of the detector
+
+
+
+- Classification
+    - Number of reuploading layers, does this change robustness
+    - Try other measurement with the average of all qubits

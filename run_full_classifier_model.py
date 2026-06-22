@@ -5,9 +5,9 @@ import scipy
 import numpy as np
 import pandas as pd
 # Import from other modules
-from model.common import fromYaml
+from model.common import fromYaml, ECfromYaml
 from data.EOSdataset import DataSet
-from model.common import fromFolder
+from model.common import fromFolder, ECfromFolder
 
 from model.gpu_utils import setup_gpu_memory_growth
 from plot.basic import error_residual, plot_histo, rates,efficiency, clusters, plot_2d,ROC_curve
@@ -61,7 +61,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 rerun_embedding = args.rerun_embedding
-retrain_AE_models = args.retrain_CE
+retrain_AE_models = args.retrain_EC
 rerun_predictions = args.run_predictions
 rerun_augment_predictions = args.run_augment_predictions
 plot = args.plot
@@ -74,37 +74,37 @@ models = ['CEC','QEC']
 ######## GLOBAL PARAMETERS for ML Models ############
 if Dataset == 'C2V':
     if Model_type == 'MLP':
-        embedding_model_path = 'C2V_Contrastive_Embedding/MLP/all/ContrastiveEmbedding'
-        output_path = 'C2V/MLP/all'
+        embedding_model_path = 'embeddings/C2V/all/MLP/'
+        output_path = 'EventClassification/C2V/all/MLP'
     if Model_type == 'transformer':
-        embedding_model_path = 'C2V_Contrastive_Embedding/Transformer/all/TransformerEmbedding'
-        output_path = 'C2V/transformer/all'
+        embedding_model_path = 'embeddings/C2V/all/Transformer/'
+        output_path = 'EventClassification/C2V/all/Transformer'
 
 if Dataset == 'AD': 
     if Model_type == 'MLP':
-        embedding_model_path = 'AD_Contrastive_Embedding/MLP/all/ContrastiveEmbedding'
-        output_path = 'AD/MLP/all'
+        embedding_model_path = 'embeddings/AD/all/MLP'
+        output_path = 'EventClassification/AD/all/MLP'
     if Model_type == 'transformer':
-        embedding_model_path = 'AD_Contrastive_Embedding/Transformer/all/TransformerEmbedding'
-        output_path = 'AD/transformer/all'
+        embedding_model_path = 'embeddings/AD/all/Transformer'
+        output_path = 'EventClassification/AD/all/Transformer'
 
 ########## GLOBAL PARAMETERS for Collide 2V ##########
 
 if Dataset == 'C2V':
-    train_labels = {"HH_4b":1,"minbias":0}
-    test_labels = {"minbias" : 0,"HH_4b" : 1}
-    augment_labels = {"minbias" : 0, "HH_4b" : 2, "minbias_augment" : 0, "HH_4b_augment" : 2}
+    train_labels = {"HH_4b":1,"QCD_HT50toInf":0}
+    test_labels = {"QCD_HT50toInf" : 0,"HH_4b" : 1}
+    augment_labels = {"QCD_HT50toInf" : 0, "HH_4b" : 1, "QCD_HT50toInf_augment" : 0, "HH_4b_augment" : 1}
 
 
-    output_dict = {'CAE' : {"minbias" : {}, "HH_4b" : {}},
-                   'QAE' : {"minbias" : {}, "HH_4b" : {}},
+    output_dict = {'CEC' : {"QCD_HT50toInf" : {}, "HH_4b" : {}},
+                   'QEC' : {"QCD_HT50toInf" : {}, "HH_4b" : {}},
                     }
-    augment_output_dict = {'CAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
-                           'QAE' : {"minbias" : {}, "HH_4b" : {}, "minbias_augment" : {}, "HH_4b_augment" : {} },
+    augment_output_dict = {'CEC' : {"QCD_HT50toInf" : {}, "HH_4b" : {}, "QCD_HT50toInf_augment" : {}, "HH_4b_augment" : {} },
+                           'QEC' : {"QCD_HT50toInf" : {}, "HH_4b" : {}, "QCD_HT50toInf_augment" : {}, "HH_4b_augment" : {} },
                     }
-    input_path = '/scratch/RobustQML_Datasets/C2V_dataset'
+    input_path = '/scratch/RobustQML_Datasets/C2V_dataset/'
 
-    background_name = 'minbias'
+    background_name = 'QCD_HT50toInf'
     background_augment_name = background_name + '_augment'
 
     signal_name = 'HH_4b'
@@ -119,11 +119,11 @@ if Dataset == 'AD':
     test_labels =  {"background" : 0, "ato4l" :1}
     augment_labels = {"background" : 0, "ato4l" :1, "background_augment":0, "ato4l_augment":1}
 
-    output_dict = {'CAE' : {"background" : {}, "ato4l" :{}},
-                   'QAE' : {"background" : {}, "ato4l" :{}}}
+    output_dict = {'CEC' : {"background" : {}, "ato4l" :{}},
+                   'QEC' : {"background" : {}, "ato4l" :{}}}
     
-    augment_output_dict = {'CAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
-                            'QAE' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} }}
+    augment_output_dict = {'CEC' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} },
+                           'QEC' : {"background" : {}, "ato4l" : {}, "background_augment" : {}, "ato4l_augment" : {} }}
     input_path = '/scratch/RobustQML_Datasets/AD_dataset/'
 
     background_name = 'background'
@@ -167,10 +167,21 @@ train_data_frame = pd.read_pickle(output_path+'/embeddings/train/dataset.pkl')
 embedding_max, embedding_min = np.percentile(train_embeddings,100), np.percentile(train_embeddings,0)
 
 if retrain_AE_models:
+   
+    print("Training QEC")
+    
+    QEC_model = ECfromYaml('model/configs/EmbeddingPennyLaneQECModel.yaml',output_path+'/models/QEC')
+    input_shape = train_embeddings.shape[0]
+    input_length = len(train_embeddings)
+    QEC_model.build_model(input_shape, 1 ,embedding_min, embedding_max )
+    QEC_model.compile_model(input_length)
+    QEC_model.only_QEC_fit(train_embeddings,train_data_frame["event_label"].to_numpy())
+    QEC_model.save()
+    QEC_model.plot_loss()
     
     print("Training CEC")
     
-    CEC_model = fromYaml('model/configs/EmbeddingClassicalCECModel.yaml',output_path+'/models/CEC')
+    CEC_model = ECfromYaml('model/configs/EmbeddingClassicalECModel.yaml',output_path+'/models/CEC')
     input_shape = train_embeddings.shape[0]
     input_length = len(train_embeddings)
     CEC_model.build_model(input_shape, 1 ,embedding_min, embedding_max )
@@ -178,21 +189,10 @@ if retrain_AE_models:
     CEC_model.only_CEC_fit(train_embeddings,train_data_frame["event_label"].to_numpy())
     CEC_model.save()
     CEC_model.plot_loss()
-        
-    print("Training QAE")
-    
-    QEC_model = fromYaml('model/configs/EmbeddingPennyLaneQECModel.yaml',output_path+'/models/QEC')
-    input_shape = train_embeddings.shape[0]
-    input_length = len(train_embeddings)
-    QEC_model.build_model(input_shape, 1 ,embedding_min, embedding_max )
-    QEC_model.compile_model(input_length)
-    QEC_model.only_QAE_fit(train_embeddings),train_data_frame["event_label"].to_numpy()
-    QEC_model.save()
-    QEC_model.plot_loss()
     
     
-CEC_model = fromFolder(output_path+'/models/CEC')
-QEC_model = fromFolder(output_path+'/models/QEC')
+CEC_model = ECfromFolder(output_path+'/models/CEC')
+QEC_model = ECfromFolder(output_path+'/models/QEC')
 
 if rerun_embedding:
     print(f" Rerunning test embedding from: {embedding_model_path}")
@@ -233,7 +233,7 @@ if rerun_predictions:
         print("Classical Classifier Predict")
         output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
         print("Quantum Classifier Predict")
-        output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings)}
+        output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,1)}
   
     
     with open(output_path+'/models/output_dict.pkl', 'wb') as f:
@@ -247,7 +247,7 @@ if plot:
     print("Plotting output histograms")
     
     for model in models:
-    
+        print([output_dict[model][dataset]['predictions'] for dataset in output_dict[model].keys()])
         plot_histo([output_dict[model][dataset]['predictions'] for dataset in output_dict[model].keys()], 
                 [dataset for dataset in output_dict[model].keys()], 
                 '', 
@@ -346,11 +346,11 @@ if plot:
         
     plot_PCA(event_principle_components, event_label_vector,((event_xmin, event_xmax),(event_ymin, event_ymax)), {'test':'test','augment':'augment'}, f"{output_path}/embeddings/plots/{background_name}")
 
-    signal_indices = np.where(test_data_frame["event_label"] == 2)
+    signal_indices = np.where(test_data_frame["event_label"] == 1)
     test_index = np.random.randint(0, len(signal_indices[0]), size=60000)
     signal_test_embeddings = test_embeddings[signal_indices[0][test_index]]
 
-    signal_indices = np.where(augment_data_frame["event_label"] == 2)
+    signal_indices = np.where(augment_data_frame["event_label"] == 1)
     test_index = np.random.randint(0, len(signal_indices[0]), size=60000)
     signal_augment_embeddings = augment_embeddings[signal_indices[0][test_index]]
         
@@ -380,16 +380,18 @@ if rerun_augment_predictions:
             indices = np.where(augment_data_frame["event_label"] == augment_labels[label])
             test_index = np.random.randint(0, len(indices[0]), size=10000)
             embeddings = augment_embeddings[indices[0][test_index]]
+            data_frame = augment_data_frame.iloc[indices[0][test_index]]
         else:
             indices = np.where(test_data_frame["event_label"] == augment_labels[label])
             test_index = np.random.randint(0, len(indices[0]), size=10000)
             embeddings = test_embeddings[indices[0][test_index]]
+            data_frame = test_data_frame.iloc[indices[0][test_index]]
             
 
         print("Classical Classifier Predict")
         augment_output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
         print("Quantum Classifier Predict")
-        augment_output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings)}
+        augment_output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,1)}
         
     with open(output_path+'/models/output_augment_dict.pkl', 'wb') as f:
         pickle.dump(augment_output_dict, f)
@@ -401,6 +403,7 @@ if plot:
     print("Plotting augment output histograms")
     
     for model in models:
+        print(augment_output_dict[model])
         plot_histo([augment_output_dict[model][dataset]['predictions'] for dataset in augment_output_dict[model].keys()], 
                 [dataset for dataset in augment_output_dict[model].keys()], 
                 '', 
@@ -477,13 +480,13 @@ for model in models:
     
 if run_augment_scan:
     
-    num_samples = 2000
+    num_samples = 600
     num_CV = 10
     print("Running augment scan")
     
     os.makedirs(output_path+"/augment/", exist_ok=True)
     f = open(output_path+"/augment/scan_classical_only.csv",'w')
-    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,embedding_wd, embedding_wd_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
+    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
 
     non_augmented_model_results = {background_name: {'CEC':[],
                                                      'QEC':[],
@@ -491,17 +494,11 @@ if run_augment_scan:
                                    signal_name: {'CEC':[],
                                                  'QEC':[],
                                                  'embeddings':[]}}
-    
-    background_test = DataSet.fromH5(input_path+background_name+'/test/')
-    
-    signal_test = DataSet.fromH5(input_path+signal_name+'/test/')
-    
-    dataset_dict = {background_name: background_test, signal_name: signal_test}
-    
+
     for iCV in range(num_CV):
         start_time = time.time()
         for datasets in [background_name,signal_name]:
-                temp_dataset = dataset_dict[datasets]
+                temp_dataset =  DataSet.fromH5(input_path+datasets+'/test/')
                 temp_dataset.normalise()
                 data_test_dataframe = temp_dataset.data_frame
                 
@@ -509,8 +506,8 @@ if run_augment_scan:
 
                 embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
 
-                non_augmented_model_results[datasets]['CEC'].append(CEC_model.only_CAE_predict(embeddings))
-                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QAE_predict(embeddings))
+                non_augmented_model_results[datasets]['CEC'].append(CEC_model.only_CEC_predict(embeddings))
+                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QEC_predict(embeddings,1))
                 non_augmented_model_results[datasets]['embeddings'].append(embeddings)
                 
                 gc.collect()
@@ -529,7 +526,7 @@ if run_augment_scan:
         for iCV in range(num_CV): 
             start_time = time.time()
             for datasets in [background_name,signal_name]:
-                temp_dataset =  dataset_dict[datasets]
+                temp_dataset =  DataSet.fromH5(input_path+datasets+'/test/')
                 #augment_test.drop_a_soft_one('jet')
                 temp_dataset.eta_smear(smear_percent)
                 temp_dataset.pt_smear(smear_percent)
@@ -549,7 +546,7 @@ if run_augment_scan:
                 augmented_model_results[datasets]['CEC']['predictions'] = (CEC_model.only_CEC_predict(augmented_embeddings))
                 print(f"CEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 start_time = time.time()
-                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings))
+                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings, 1))
                 print(f"QEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 gc.collect()
             

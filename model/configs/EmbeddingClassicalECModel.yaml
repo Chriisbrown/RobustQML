@@ -6,6 +6,7 @@ run_config :
 
 model_config :
   name : classifier
+  encoder_layers : [8,6]
   latent_dim : 8
 
 training_config :

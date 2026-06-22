@@ -1,4 +1,4 @@
-model: EmbeddingQECModel
+model: EmbeddingQECPLModel
 run_config :
   verbose : 2
   debug : True
@@ -11,6 +11,6 @@ model_config :
   n_layers : 3
 
 training_config :
-  epochs : 120
-  batch_size : 10000
+  epochs : 70
+  batch_size : 1000
   learning_rate : 0.2

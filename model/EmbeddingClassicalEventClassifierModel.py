@@ -50,7 +50,7 @@ class EmbeddingCECModel(ECModel):
             inputs_shape (tuple): Shape of the input
         """
         
-        inputs = keras.layers.Input(shape=(self.model_config['embedding_dim'],), name='model_input')
+        inputs = keras.layers.Input(shape=(self.model_config['latent_dim'],), name='model_input')
         bn_inputs = keras.layers.BatchNormalization()(inputs)
         for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
             if ienc == 0:
@@ -84,7 +84,7 @@ class EmbeddingCECModel(ECModel):
         # compile the tensorflow model setting the loss and metrics
         self.EC_model.compile(
             optimizer='adam',
-            loss='binaray_cross_entropy',
+            loss='binary_crossentropy',
             metrics= ['accuracy'],
         )
 
@@ -193,8 +193,8 @@ class EmbeddingCECModel(ECModel):
 
         X_test = np.clip(X_test, self.xmin, self.xmax)
         x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
-        model_outputs = self.EC_model(x)
-        return model_outputs
+        model_outputs = np.array(self.EC_model(x))
+        return 1 - model_outputs[:,0]
     
     
     

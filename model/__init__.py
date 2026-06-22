@@ -8,3 +8,4 @@ from model.EmbeddingClassicalAutoEncoderModel import EmbeddingCAEModel
 from model.EmbeddingSupportVectorMachineModel import EmbeddingSVMModel
 
 from model.EmbeddingClassicalEventClassifierModel import EmbeddingCECModel
+from model.EmbeddingPennylaneEventClassifierModel import EmbeddingQECModel

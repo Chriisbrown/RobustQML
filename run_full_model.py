@@ -518,13 +518,13 @@ for model in models:
     
 if run_augment_scan:
     
-    num_samples = 2000
+    num_samples = 600
     num_CV = 10
     print("Running augment scan")
     
     os.makedirs(output_path+"/augment/", exist_ok=True)
     f = open(output_path+"/augment/scan_classical_only.csv",'w')
-    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,embedding_wd, embedding_wd_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
+    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
 
     non_augmented_model_results = {background_name: {'CAE':[],#'SVM':[],
                                                      'QAE':[],'HW_QAE':[],
@@ -532,17 +532,11 @@ if run_augment_scan:
                                    signal_name: {'CAE':[],#'SVM':[],
                                                  'QAE':[],'HW_QAE':[],
                                                  'embeddings':[]}}
-    
-    background_test = DataSet.fromH5(input_path+background_name+'/test/')
-    
-    signal_test = DataSet.fromH5(input_path+signal_name+'/test/')
-    
-    dataset_dict = {background_name: background_test, signal_name: signal_test}
-    
+
     for iCV in range(num_CV):
         start_time = time.time()
         for datasets in [background_name,signal_name]:
-                temp_dataset = dataset_dict[datasets]
+                temp_dataset = DataSet.fromH5(input_path+datasets+'/test/')
                 temp_dataset.normalise()
                 data_test_dataframe = temp_dataset.data_frame
                 
@@ -576,7 +570,7 @@ if run_augment_scan:
         for iCV in range(num_CV): 
             start_time = time.time()
             for datasets in [background_name,signal_name]:
-                temp_dataset =  dataset_dict[datasets]
+                temp_dataset =  DataSet.fromH5(input_path+datasets+'/test/')
                 #augment_test.drop_a_soft_one('jet')
                 temp_dataset.eta_smear(smear_percent)
                 temp_dataset.pt_smear(smear_percent)

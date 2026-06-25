@@ -51,15 +51,17 @@ class EmbeddingCECModel(ECModel):
         """
         
         inputs = keras.layers.Input(shape=(self.model_config['latent_dim'],), name='model_input')
-        bn_inputs = keras.layers.BatchNormalization()(inputs)
-        for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
-            if ienc == 0:
-                encoder = Dense(depthenc, activation='relu')(bn_inputs)
-            else:
-                encoder = Dense(depthenc, activation='relu')(encoder)
-        encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
+        # bn_inputs = keras.layers.BatchNormalization()(inputs)
+        # for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
+        #     if ienc == 0:
+        #         encoder = Dense(depthenc, activation='relu')(bn_inputs)
+        #     else:
+        #         encoder = Dense(depthenc, activation='relu')(encoder)
+        #encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
 
-        output = Dense(output_shape,activation='sigmoid',name='model_output')(encoder)
+        #output = Dense(output_shape,activation='sigmoid',name='model_output')(encoder)
+        
+        output = Dense(output_shape,activation='linear',name='model_output')(inputs)
                 
         self.EC_model = keras.Model(inputs=inputs, outputs=output)
         

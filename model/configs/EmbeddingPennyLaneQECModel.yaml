@@ -8,9 +8,9 @@ model_config :
   name : q
   latent_dim : 1
   embedding_dim : 8
-  n_layers : 3
+  n_layers : 1
 
 training_config :
   epochs : 120
-  batch_size : 10000
+  batch_size : 1000
   learning_rate : 0.2

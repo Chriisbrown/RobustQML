@@ -233,7 +233,7 @@ if rerun_predictions:
         print("Classical Classifier Predict")
         output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
         print("Quantum Classifier Predict")
-        output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,1)}
+        output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,data_frame["event_label"],1)}
   
     
     with open(output_path+'/models/output_dict.pkl', 'wb') as f:
@@ -391,7 +391,7 @@ if rerun_augment_predictions:
         print("Classical Classifier Predict")
         augment_output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
         print("Quantum Classifier Predict")
-        augment_output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,1)}
+        augment_output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,data_frame["event_label"],1)}
         
     with open(output_path+'/models/output_augment_dict.pkl', 'wb') as f:
         pickle.dump(augment_output_dict, f)
@@ -507,7 +507,7 @@ if run_augment_scan:
                 embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
 
                 non_augmented_model_results[datasets]['CEC'].append(CEC_model.only_CEC_predict(embeddings))
-                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QEC_predict(embeddings,1))
+                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QEC_predict(embeddings,data_test_dataframe['event_label'][iCV*num_samples:(iCV+1)*num_samples],1))
                 non_augmented_model_results[datasets]['embeddings'].append(embeddings)
                 
                 gc.collect()
@@ -533,10 +533,10 @@ if run_augment_scan:
                 temp_dataset.phi_smear(smear_percent)
                 #data_test.phi_rotate()
                 temp_dataset.normalise()
-                
+                temp_dataset.set_label(test_labels[datasets])
                 data_test_dataframe = temp_dataset.data_frame
 
-                temp_dataset.set_label(test_labels[datasets])
+                
                 print(f"Data set loading {iCV} {datasets} {smear_percent} finishing in {time.time() - start_time} s")
                 start_time = time.time()
                 augmented_embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
@@ -546,7 +546,7 @@ if run_augment_scan:
                 augmented_model_results[datasets]['CEC']['predictions'] = (CEC_model.only_CEC_predict(augmented_embeddings))
                 print(f"CEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 start_time = time.time()
-                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings, 1))
+                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings,data_test_dataframe['event_label'][iCV*num_samples:(iCV+1)*num_samples], 1))
                 print(f"QEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 gc.collect()
             

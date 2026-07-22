@@ -16,9 +16,9 @@ model_config :
 training_config :
   constrastive_epochs : 10
   epochs : 20
-  batch_size : 10240
-  emb_learning_rate : 0.001
-  emb_learning_rate_decay : 0.000001
+  batch_size : 1024
+  emb_learning_rate : 0.01
+  emb_learning_rate_decay : 0.0001
   learning_rate : 0.001
   validation_split : 0.1
   

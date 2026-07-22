@@ -45,15 +45,17 @@ def plot_histo(variable, name, title, xlabel, ylabel, log = 'log', x_range=(0, 1
             stacked=False,
             color=[colours[i] for i in range(len(variable))],
             label=name,
-            linewidth=style.LINEWIDTH - 1.5,
-            linestyle=linestyle,
+            linewidth=style.LINEWIDTH ,
+            #linestyle=linestyle,
             density=True,
         )
     ax.grid(True)
     ax.set_yscale(log)
     ax.set_xlabel(xlabel, ha="right", x=1)
     ax.set_ylabel(ylabel, ha="right", y=1)
-    ax.legend(loc='upper right')
+    
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles[::-1], labels[::-1],loc='upper right')
     return fig
 
 def error_residual(model_outputs,plot_dir):
@@ -163,19 +165,21 @@ def ROC_curve(background,signal,labels,plot=True):
             
             if plot:
                     
-                plt.plot(fpr_loss, tpr_loss, "-", label=label+' (auc = %.1f%%)'%(auc_loss*100.), color = style.colours[i])
+                plt.plot(fpr_loss, tpr_loss, "-", label=label+' (AUC = %.1f%%)'%(auc_loss*100.), color = style.colours[i],linewidth=style.LINEWIDTH)
                 
             else:
                 auc_loss_list.append(auc_loss)
     if plot:       
         ax.semilogx()
         ax.semilogy()
-        ax.set_ylabel("True Positive Rate")
-        ax.set_xlabel("False Positive Rate")
-        ax.legend(loc='center right')
+        ax.set_ylabel("True Positive Rate",loc='top')
+        ax.set_xlabel("False Positive Rate",loc='right')
+        ax.set_ylim(0.000001,1)
+        ax.set_xlim(0.000001,1)
+        ax.legend(loc='lower right')
         ax.grid(True)
-        ax.plot(np.linspace(0, 1),np.linspace(0, 1), '--', color='0.75')
-        ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=2) # threshold value for measuring anomaly detection efficiency
+        ax.plot(np.linspace(0, 1),np.linspace(0, 1), '--', color='0.75', linewidth=style.LINEWIDTH)
+        ax.axvline(0.00001, color='green', linestyle='dashed', linewidth=style.LINEWIDTH) # threshold value for measuring anomaly detection efficiency
         return fig
     
     else:

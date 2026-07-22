@@ -2,6 +2,9 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 
 colours = ["black", "red", "orange", "green", "blue","magenta","cyan","yellow","purple","gold"]
+
+colours = ['#FF2C55','#731963','#348AA7','#8cb369','#c69c72']
+
 LINESTYLES = [
     "-",
     "--",
@@ -39,10 +42,10 @@ def set_style():
     plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
     plt.rc('axes', titlesize=BIGGER_SIZE)  # fontsize of the axes title
     plt.rc('axes', labelsize=BIGGER_SIZE + 5)  # fontsize of the x and y labels
-    plt.rc('axes', linewidth=LINEWIDTH + 2)  # thickness of axes
+    plt.rc('axes', linewidth=LINEWIDTH)  # thickness of axes
     plt.rc('xtick', labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
     plt.rc('ytick', labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
-    plt.rc('legend', fontsize=SMALL_SIZE - 2)  # legend fontsize
+    plt.rc('legend', fontsize=SMALL_SIZE+2)  # legend fontsize
     plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
     # line thickness

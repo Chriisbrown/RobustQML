@@ -1,0 +1,22 @@
+model: EmbeddingLECModel
+run_config :
+  verbose : 2
+  debug : True
+  num_threads : 64
+
+model_config :
+  name : classifier
+  encoder_layers : [7,6,4]
+  latent_dim : 7
+
+training_config :
+  epochs : 20
+  batch_size : 1024
+  learning_rate : 0.005
+  validation_split : 0.1
+
+  EarlyStopping_patience : 10
+
+  ReduceLROnPlateau_factor : 0.5
+  ReduceLROnPlateau_patience : 5
+  ReduceLROnPlateau_min_lr : 0.00001

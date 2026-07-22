@@ -9,15 +9,15 @@ from sklearn.model_selection import train_test_split
 
 if __name__ == "__main__":
 
-    process_folders = { #'background' : {'path':'background_for_training','pretty':'SM background'},
+    process_folders = { 'background' : {'path':'background_for_training','pretty':'SM background'},
                         'ato4l': {'path':'Ato4l_lepFilter_13TeV_filtered','pretty':'A -> 4l'},
-                        #'hChToTauNu': {'path':'hChToTauNu_13TeV_PU20_filtered','pretty':'H+ -> Tau Nu'},
-                        #'hToTauTau': {'path':'hToTauTau_13TeV_PU20_filtered','pretty':'h -> Tau Tau'},
-                        #'leptoquark': {'path':'leptoquark_LOWMASS_lepFilter_13TeV_filtered','pretty':'leptoquark'},
+                        'hChToTauNu': {'path':'hChToTauNu_13TeV_PU20_filtered','pretty':'H+ -> Tau Nu'},
+                        'hToTauTau': {'path':'hToTauTau_13TeV_PU20_filtered','pretty':'h -> Tau Tau'},
+                        'leptoquark': {'path':'leptoquark_LOWMASS_lepFilter_13TeV_filtered','pretty':'leptoquark'},
 
                         }
     #outdir = 'training_data/'  
-    outdir = '/eos/user/c/cebrown/RobustQML/AD_dataset/processed/'  
+    outdir = '/scratch/RobustQML_Datasets/AD_dataset/'  
 
     os.makedirs(outdir, exist_ok=True)
     print("Output directory:", outdir)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
         train.data_frame = train_split
         test.data_frame = test_split
-        
+                
         train.save_h5(outdir+process+'/train')
         train.pretty_name = process_folders[process]['pretty']
         train.plot_inputs(outdir+process+'/train')
@@ -54,6 +54,12 @@ if __name__ == "__main__":
         augment_test.pretty_name = process_folders[process]['pretty'] + ' augmented'
         augment_test.plot_inputs(outdir+process+'/augment')
         augment_test.save_h5(outdir+process+'/augment')
+        
+        print("========")
+        print(process)
+        print(len(train.data_frame))
+        print(len(test.data_frame))
+        print(len(augment_test.data_frame))
         
     blackbox = DataSet.fromOrginalH5(input_directory+'BlackBox_background_mix',with_labels=True)
     blackbox_augment = blackbox

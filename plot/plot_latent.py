@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
 from model.common import fromFolder
-from data.EOSdataset import DataSet
+
 from model.gpu_utils import setup_gpu_memory_growth
 
 from plot import style
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        '-a', '--ad_dataset', action='store_true'
+        '-d', '--dataset', default='ad',
     )
     
     args = parser.parse_args()
@@ -268,12 +268,19 @@ if __name__ == "__main__":
     plot_dir = os.path.join(model.output_directory, "plots/testing/latent")
     os.makedirs(plot_dir, exist_ok=True)
     
-    if args.ad_dataset:
+    if args.dataset == 'ad':
+        from data.EOSdataset import DataSet
         event_labels = {"background" : 0, "ato4l" :1, "hChToTauNu" : 2, "hToTauTau" : 3, "leptoquark" : 4, "blackbox": 5}
         event_label_style = {"background" : 'SM background', "ato4l" :'A -> 4l', "hChToTauNu" : 'H+ -> Tau Nu', "hToTauTau" : 'h -> Tau Tau', "leptoquark" : 'leptoquark', "blackbox": 'blackbox'}
         path = '/scratch/RobustQML_Datasets/AD_dataset/'
-        
+    
+    if args.dataset == 'csv':
+        from data.CSVdataset import DataSet
+        event_labels = {'background' :0,'SUSY' : 1}
+        event_label_style = {'background':'background','SUSY':'SUSY'}
+        path = '/scratch/RobustQML_Datasets/SUSY_processed/'
     else:
+        from data.EOSdataset import DataSet
         event_labels = {'minbias' :0,'QCD_HT50toInf' : 1,'HH_4b' : 2,'HH_bbgammagamma':3,'HH_bbtautau':4,'QCD_HT50tobb':5}
         event_label_style = {'minbias':'Minbias', 'QCD_HT50toInf': 'QCD_HT50toInf', 'HH_4b':'HH->bbbb','HH_bbgammagamma':'HH_bbgammagamma','HH_bbtautau':'HH_bbtautau','QCD_HT50tobb':'QCD_HT50tobb' }
         path = '/scratch/RobustQML_Datasets/C2V_dataset/'

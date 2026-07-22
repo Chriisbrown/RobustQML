@@ -51,17 +51,17 @@ class EmbeddingCECModel(ECModel):
         """
         
         inputs = keras.layers.Input(shape=(self.model_config['latent_dim'],), name='model_input')
-        # bn_inputs = keras.layers.BatchNormalization()(inputs)
-        # for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
-        #     if ienc == 0:
-        #         encoder = Dense(depthenc, activation='relu')(bn_inputs)
-        #     else:
-        #         encoder = Dense(depthenc, activation='relu')(encoder)
-        #encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
+        bn_inputs = keras.layers.BatchNormalization()(inputs)
+        for ienc, depthenc in enumerate(self.model_config['encoder_layers']):
+            if ienc == 0:
+                encoder = Dense(depthenc, activation='relu')(bn_inputs)
+            else:
+                encoder = Dense(depthenc, activation='relu')(encoder)
+        encoder = Dense(self.model_config['latent_dim'],activation='relu')(encoder)
 
-        #output = Dense(output_shape,activation='sigmoid',name='model_output')(encoder)
+        output = Dense(output_shape,activation='sigmoid',name='model_output')(encoder)
         
-        output = Dense(output_shape,activation='linear',name='model_output')(inputs)
+        #output = Dense(output_shape,activation='linear',name='model_output')(inputs)
                 
         self.EC_model = keras.Model(inputs=inputs, outputs=output)
         
@@ -196,7 +196,7 @@ class EmbeddingCECModel(ECModel):
         X_test = np.clip(X_test, self.xmin, self.xmax)
         x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
         model_outputs = np.array(self.EC_model(x))
-        return 1 - model_outputs[:,0]
+        return model_outputs[:,0]
     
     
     
@@ -235,3 +235,36 @@ class EmbeddingCECModel(ECModel):
         with open(f"{out_dir}/model/max.txt") as f:
             self.xmax = float(f.read())
 
+
+
+# Register the model in the factory with the string name corresponding to what is in the yaml config
+@ECModelFactory.register('EmbeddingLECModel')
+class EmbeddingLECModel(EmbeddingCECModel):
+
+    """EmbeddingLECModel class
+
+    Args:
+        EmbeddingLECModel (_type_): Base class of a Event Classifier Model
+    """
+    
+    def __init__(self,output_dir):
+        super().__init__(output_dir)
+        
+
+    def build_model(self, inputs_shape: tuple,output_shape: int, xmin,xmax):
+        """build model override
+
+        Args:
+            inputs_shape (tuple): Shape of the input
+        """
+        
+        inputs = keras.layers.Input(shape=(self.model_config['latent_dim'],), name='model_input')
+
+        
+        output = Dense(output_shape,activation='linear',name='model_output',)(inputs)
+                
+        self.EC_model = keras.Model(inputs=inputs, outputs=output)
+        
+        self.xmin = xmin
+        self.xmax = xmax
+        

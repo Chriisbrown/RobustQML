@@ -6,8 +6,8 @@ run_config :
 
 model_config :
   name : classifier
-  encoder_layers : [8,6]
-  latent_dim : 8
+  encoder_layers : [7,6,4]
+  latent_dim : 7
 
 training_config :
   epochs : 20

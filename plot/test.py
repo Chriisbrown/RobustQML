@@ -81,8 +81,10 @@ if __name__ == "__main__":
             data_test = data_test.data_frame.sample(n=args.events)
         else:
             data_test = data_test.data_frame.sample(frac=1.0)
+        print("min data test ",np.min(data_test))
+        print("max data test ",np.max(data_test))
         model_outputs = model.predict(data_test,training_columns)
-        print(model_outputs)
+        print("model outputs: ",model_outputs)
         efficiency_out = efficiency(type(model).__name__,datasets,model_outputs)
         output_dict[datasets] = {'predictions' : model_outputs,'efficiencies' : efficiency_out,'dataset':data_test}
         plot_2d(data_test['L1T_JetPuppiAK4_PT0'], model_outputs, (0,max_jet_pt), (0,1), 'Leading Jet pT', 'model predictions', 'leading jet pT dependence for '+datasets)

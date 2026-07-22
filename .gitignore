@@ -9,3 +9,8 @@ AD_**/**
 C2V/**
 C2V_**/**
 all/**
+AnomalyDetection/**
+EventClassification/**
+embeddings/**
+RobustQML_Datasets/**
+*.txt

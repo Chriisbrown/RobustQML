@@ -61,6 +61,10 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         
     def load_embedding_model(self,model_folder):
         self.embedding_model = fromFolder(model_folder)
+        
+    def cosine_annealing(self,initial_lr, min_lr, total_steps, step):
+        return min_lr + 0.5 * (initial_lr - min_lr) * (1 + np.cos(np.pi * step / total_steps))
+
 
     def build_model(self, inputs_shape: tuple, xmin,xmax):
         """build model override
@@ -84,7 +88,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         self.dev = qml.device("lightning.gpu", wires=self.q_wires + self.t_wires + [self.a_wire])
         @qml.set_shots(shots=None)
         @qml.qnode(self.dev)
-        def circuit(weights , x1, return_projector=False):
+        def circuit(weights , x1, return_projector=True):
             """
             featsy: shape (nq,)
             featsx: shape (nq,)
@@ -208,7 +212,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
                   
         for it in range(self.training_config['epochs']):
             # Update the weights by one optimizer step, using only a limited batch of data
-                  
+            self.opt.stepsize = self.cosine_annealing(self.training_config['learning_rate'], 1e-5, self.training_config['epochs'], it)
             self.circuit_weights= self.opt.step(self.cost, self.circuit_weights, x=x_train)
 
             current_cost = self.cost(self.circuit_weights, x_train)
@@ -288,7 +292,8 @@ class EmbeddingPennyLaneQAEModel(ADModel):
                   
         for it in range(self.training_config['epochs']):
             # Update the weights by one optimizer step, using only a limited batch of data
-                  
+            self.opt.stepsize = self.cosine_annealing(self.training_config['learning_rate'], 1e-5, self.training_config['epochs'], it)
+
             self.circuit_weights= self.opt.step(self.cost, self.circuit_weights, x=x_train)
 
             current_cost = self.cost(self.circuit_weights, x_train)
@@ -308,7 +313,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         # self.dev._circuit.draw(output="mpl")
         # plt.savefig(self.output_directory+'/plots/training/circuit.png')
 
-    def predict(self, X_test, training_columns, return_score = True) -> npt.NDArray[np.float64]:
+    def predict(self, X_test, training_columns) -> npt.NDArray[np.float64]:
         
         if isinstance(X_test, DataSet):
             test = X_test.get_training_dataset()
@@ -340,7 +345,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         ad_scores = ad_scores/0.5
         return ad_scores
     
-    def only_QAE_predict(self, X_test, return_score = True) -> npt.NDArray[np.float64]:
+    def only_QAE_predict(self, X_test, use_max_events=True) -> npt.NDArray[np.float64]:
 
         """Predict method for model
 
@@ -358,8 +363,12 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         x = (((X_test - self.xmin) / (self.xmax- self.xmin)) * 2*np.pi) - np.pi
 
         predictions = []
-        
-        for ievent in range(len(x)):
+        if use_max_events:
+            max_num_events = len(x)
+        else:
+            max_num_events = int(len(x)/100)
+            
+        for ievent in range(max_num_events):
             predictions.append(qml.math.mean(self.autoencoder(self.circuit_weights,  x[ievent] )))
         ad_scores = np.array(predictions ) 
         ad_scores = ad_scores/0.5
@@ -437,7 +446,7 @@ class EmbeddingHWPennyLaneQAEModel(EmbeddingPennyLaneQAEModel):
         self.a_wire = "a"
                 
         self.dev = qml.device("lightning.gpu", wires=self.q_wires + self.t_wires + [self.a_wire])
-        @qml.set_shots(shots=1000)
+        @qml.set_shots(shots=None)
         @qml.qnode(self.dev)
         def circuit(weights,x1, return_projector=True):
             """
@@ -480,7 +489,8 @@ class EmbeddingHWPennyLaneQAEModel(EmbeddingPennyLaneQAEModel):
             # "Measure ancilla"
             if return_projector:
                 # returns samples of projector onto |1>, i.e. 1 if ancilla is |1>, else 0
-                return qml.sample(qml.Projector([1], wires=self.a_wire))
+                # return qml.sample(qml.Projector([1], wires=self.a_wire))
+                return qml.expval(qml.Projector([1], wires=self.a_wire))
             else:
                 # returns samples of PauliZ: +1 corresponds to |0>, -1 to |1>
                 return qml.sample(qml.PauliZ(wires=self.a_wire))

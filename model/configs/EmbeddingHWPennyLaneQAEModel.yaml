@@ -11,6 +11,6 @@ model_config :
   layers : 1
 
 training_config :
-  epochs : 50
-  batch_size : 100
-  learning_rate : 0.2
+  epochs : 60
+  batch_size : 500
+  learning_rate : 0.15

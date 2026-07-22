@@ -10,6 +10,6 @@ model_config :
   embedding_dim : 8
 
 training_config :
-  epochs : 50
-  batch_size : 1000
-  learning_rate : 0.2
+  epochs : 60
+  batch_size : 500
+  learning_rate : 0.15

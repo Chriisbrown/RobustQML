@@ -120,13 +120,13 @@ CAE_model = fromFolder(output_path+'/models/CAE')
 QAE_model = fromFolder(output_path+'/models/QAE')
 HW_QAE_model = fromFolder(output_path+'/models/HW_QAE')
     
-num_samples = 600
+num_samples = 6000
 num_CV = 10
 print("Running augment scan")
     
 os.makedirs(output_path+"/augment/", exist_ok=True)
-f = open(output_path+"/augment/pt_smear.csv",'w')
-f.write(f"model,pt_threshold_jet,pt_threshold_e,pt_threshold_mu,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
+f = open(output_path+"/augment/scan_classical_only.csv",'w')
+f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err,background_mse,background_mse_err,signal_mse,signal_mse_err,background_mae,background_mae_err,signal_mae,signal_mae_err,background_cos,background_cos_err,signal_cos,signal_cos_err,background_euc,background_euc_err,signal_euc,signal_euc_err\n")
 
 non_augmented_model_results = {background_name: {'CAE':[],
                                                  'QAE':[],'HW_QAE':[],
@@ -154,15 +154,44 @@ for iCV in range(num_CV):
                 
     print(f"Cross validation {iCV} background finishing in {time.time() - start_time} s")
 
-for pt_threshold in [(0.0001,0,0),(0.001,0,0),(0.01,0,0),(0.1,0,0),(0.2,0,0),(0.4,0,0),(0.8,0,0),(1,0,0),(2,0,0),(4,0,0),(10,0,0)]:
-    augmented_model_results = {background_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                                'embeddings':{'embeddings':0,'WD':[]}},
-                                signal_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                             'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                              'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
-                                              'embeddings':{'embeddings':0,'WD':[]}}}
+for smear_percent in [0.0001,0.001,0.01,0.1,1.0]:
+    augmented_model_results = {background_name:{'CAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                       'WD_signal':[],'WD_background':[],
+                                                       'MSE_signal':[],'MSE_background':[],
+                                                       'MAE_signal':[],'MAE_background':[],
+                                                       'cos_signal':[],'cos_background':[],
+                                                       'euc_signal':[],'euc_background':[]},
+                                                'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                       'WD_signal':[],'WD_background':[],
+                                                       'MSE_signal':[],'MSE_background':[],
+                                                       'MAE_signal':[],'MAE_background':[],
+                                                       'cos_signal':[],'cos_background':[],
+                                                       'euc_signal':[],'euc_background':[]},
+                                                'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                          'WD_signal':[],'WD_background':[],
+                                                       'MSE_signal':[],'MSE_background':[],
+                                                       'MAE_signal':[],'MAE_background':[],
+                                                       'cos_signal':[],'cos_background':[],
+                                                       'euc_signal':[],'euc_background':[]},},                                
+                               signal_name:{'CAE':{ 'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                    'WD_signal':[],'WD_background':[],
+                                                    'MSE_signal':[],'MSE_background':[],
+                                                    'MAE_signal':[],'MAE_background':[],
+                                                    'cos_signal':[],'cos_background':[],
+                                                    'euc_signal':[],'euc_background':[]},
+                                             'QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                    'WD_signal':[],'WD_background':[],
+                                                    'MSE_signal':[],'MSE_background':[],
+                                                    'MAE_signal':[],'MAE_background':[],
+                                                    'cos_signal':[],'cos_background':[],
+                                                    'euc_signal':[],'euc_background':[]},
+                                              'HW_QAE':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                        'WD_signal':[],'WD_background':[],
+                                                       'MSE_signal':[],'MSE_background':[],
+                                                       'MAE_signal':[],'MAE_background':[],
+                                                       'cos_signal':[],'cos_background':[],
+                                                       'euc_signal':[],'euc_background':[]},
+                                              }}
         
     for iCV in range(num_CV): 
         start_time = time.time()
@@ -174,10 +203,10 @@ for pt_threshold in [(0.0001,0,0),(0.001,0,0),(0.01,0,0),(0.1,0,0),(0.2,0,0),(0.
             # temp_dataset.drop_a_soft_one('jet',pt_threshold[0])
             # temp_dataset.drop_a_soft_one('e',pt_threshold[1])
             # temp_dataset.drop_a_soft_one('mu',pt_threshold[2])
-            # temp_dataset.eta_smear(smear_percent)
-            temp_dataset.pt_smear(pt_threshold[0])
-            # temp_dataset.phi_smear(smear_percent)
-            temp_dataset.eta_flip()
+            temp_dataset.eta_smear(smear_percent)
+            temp_dataset.pt_smear(smear_percent)
+            temp_dataset.phi_smear(smear_percent)
+            #temp_dataset.eta_flip()
             temp_dataset.normalise()
                 
             data_test_dataframe = temp_dataset.data_frame
@@ -203,6 +232,20 @@ for pt_threshold in [(0.0001,0,0),(0.001,0,0),(0.01,0,0),(0.1,0,0),(0.2,0,0),(0.
             start_time = time.time()
             background_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
             sig_wd = scipy.stats.wasserstein_distance(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
+            
+            background_mse = root_mean_squared_error(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
+            sig_mse = root_mean_squared_error(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
+                
+            background_mae = mean_absolute_error(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
+            sig_mae = mean_absolute_error(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
+
+            background_cos = distance.cosine(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
+            sig_cos = distance.cosine(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
+                
+            background_euc = distance.euclidean(non_augmented_model_results[background_name][model][iCV],augmented_model_results[background_name][model]['predictions'])
+            sig_euc = distance.euclidean(non_augmented_model_results[signal_name][model][iCV],augmented_model_results[signal_name][model]['predictions'])
+                
+                
             auc_loss_list = ROC_curve([non_augmented_model_results[background_name][model][iCV], augmented_model_results[background_name][model]['predictions']],
                                         [non_augmented_model_results[signal_name][model][iCV],     augmented_model_results[signal_name][model]['predictions']],
                                         [background_name,signal_name],plot=False)
@@ -211,6 +254,14 @@ for pt_threshold in [(0.0001,0,0),(0.001,0,0),(0.01,0,0),(0.1,0,0),(0.2,0,0),(0.
             augmented_model_results[background_name][model]['non_augmented_ROC'].append( auc_loss_list[0])
             augmented_model_results[background_name][model]['WD_signal'].append( sig_wd)
             augmented_model_results[background_name][model]['WD_background'].append( background_wd )
+            augmented_model_results[background_name][model]['MSE_signal'].append( sig_mse)
+            augmented_model_results[background_name][model]['MSE_background'].append( background_mse )
+            augmented_model_results[background_name][model]['MAE_signal'].append( sig_mae)
+            augmented_model_results[background_name][model]['MAE_background'].append( background_mae )
+            augmented_model_results[background_name][model]['cos_signal'].append( sig_cos)
+            augmented_model_results[background_name][model]['cos_background'].append( background_cos )
+            augmented_model_results[background_name][model]['euc_signal'].append( sig_euc)
+            augmented_model_results[background_name][model]['euc_background'].append( background_euc )
             
     for model in non_augmented_model_results[background_name].keys():   
         if model == 'embeddings':
@@ -220,30 +271,87 @@ for pt_threshold in [(0.0001,0,0),(0.001,0,0),(0.01,0,0),(0.1,0,0),(0.2,0,0),(0.
         non_augment_roc_err = np.std(augmented_model_results[background_name][model]['non_augmented_ROC'])
         augment_roc = sum(augmented_model_results[background_name][model]['augmented_ROC'])/num_CV
         augment_roc_err = np.std(augmented_model_results[background_name][model]['augmented_ROC']) 
+        
         background_WD = sum(augmented_model_results[background_name][model]['WD_background'])/num_CV
         background_WD_err = np.std(augmented_model_results[background_name][model]['WD_background'])
         signal_WD = sum(augmented_model_results[background_name][model]['WD_signal'])/num_CV
         signal_WD_err = np.std(augmented_model_results[background_name][model]['WD_signal'])
             
+        background_MSE = sum(augmented_model_results[background_name][model]['MSE_background'])/num_CV
+        background_MSE_err = np.std(augmented_model_results[background_name][model]['MSE_background'])
+        signal_MSE = sum(augmented_model_results[background_name][model]['MSE_signal'])/num_CV
+        signal_MSE_err = np.std(augmented_model_results[background_name][model]['MSE_signal'])
+            
+        background_MAE = sum(augmented_model_results[background_name][model]['MAE_background'])/num_CV
+        background_MAE_err = np.std(augmented_model_results[background_name][model]['MAE_background'])
+        signal_MAE = sum(augmented_model_results[background_name][model]['MAE_signal'])/num_CV
+        signal_MAE_err = np.std(augmented_model_results[background_name][model]['MAE_signal'])
+            
+        background_cos = sum(augmented_model_results[background_name][model]['cos_background'])/num_CV
+        background_cos_err = np.std(augmented_model_results[background_name][model]['cos_background'])
+        signal_cos = sum(augmented_model_results[background_name][model]['cos_signal'])/num_CV
+        signal_cos_err = np.std(augmented_model_results[background_name][model]['cos_signal'])
+            
+        background_euc = sum(augmented_model_results[background_name][model]['euc_background'])/num_CV
+        background_euc_err = np.std(augmented_model_results[background_name][model]['euc_background'])
+        signal_euc = sum(augmented_model_results[background_name][model]['euc_signal'])/num_CV
+        signal_euc_err = np.std(augmented_model_results[background_name][model]['euc_signal'])
+              
             
         print(model)
-        print(pt_threshold)
+        print(smear_percent)
         print(f"Non Augmented ROC {non_augment_roc} +/- {non_augment_roc_err}")
         print(f"Augmented ROC {augment_roc} +/- {augment_roc_err}")
         print("Wasserstein Distance")
         print(f"Background sample {background_WD} +/- {background_WD_err}")
         print(f"Signal sample {signal_WD} +/- {signal_WD_err}")
         print("============")
+        
+        print("RMSE")
+        print(f"Background sample {background_MSE} +/- {background_MSE_err}")
+        print(f"Signal sample {signal_MSE} +/- {signal_MSE_err}")
+        print("============")
+            
+        print("MAE")
+        print(f"Background sample {background_MAE} +/- {background_MAE_err}")
+        print(f"Signal sample {signal_MAE} +/- {signal_MAE_err}")
+        print("============")
+            
+        print("Cosine similarity")
+        print(f"Background sample {background_cos} +/- {background_cos_err}")
+        print(f"Signal sample {signal_cos} +/- {signal_cos_err}")
+        print("============")
+            
+        print("Euclidean Distance")
+        print(f"Background sample {background_euc} +/- {background_euc_err}")
+        print(f"Signal sample {signal_euc} +/- {signal_euc_err}")
+        print("============")
                     
-        f.write(f"{model},{pt_threshold[0]},{pt_threshold[1]},{pt_threshold[2]},"
-                f"{non_augment_roc},"
-                f"{non_augment_roc_err},"
-                f"{augment_roc} , "
-                f"{augment_roc_err},"
-                f"{background_WD}, " 
-                f"{background_WD_err} , "
-                f"{signal_WD} , "
-                f"{signal_WD_err}\n")
+        f.write(f"{model},{smear_percent},"
+                    f"{non_augment_roc},"
+                    f"{non_augment_roc_err},"
+                    f"{augment_roc} , "
+                    f"{augment_roc_err},"
+                    f"{background_WD}, " 
+                    f"{background_WD_err} , "
+                    f"{signal_WD} , "
+                    f"{signal_WD_err}, "
+                    f"{background_MSE}, " 
+                    f"{background_MSE_err} , "
+                    f"{signal_MSE} , "
+                    f"{signal_MSE_err}, "
+                    f"{background_MAE}, " 
+                    f"{background_MAE_err} , "
+                    f"{signal_MAE} , "
+                    f"{signal_MAE_err}, "
+                    f"{background_cos}, " 
+                    f"{background_cos_err} , "
+                    f"{signal_cos} , "
+                    f"{signal_cos_err}, "
+                    f"{background_euc}, " 
+                    f"{background_euc_err} , "
+                    f"{signal_euc} , "
+                    f"{signal_euc_err}\n")
     
 f.close()
             

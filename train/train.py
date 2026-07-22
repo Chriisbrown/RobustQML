@@ -6,14 +6,15 @@ import numpy as np
 import pandas as pd
 # Import from other modules
 from model.common import fromYaml
-from data.EOSdataset import DataSet
+
 from model.gpu_utils import setup_gpu_memory_growth
 
-def train(model ,normalise,scenario,embedding_model, ad_dataset):
+def train(model ,normalise,scenario,embedding_model, dataset):
 
     # Load the data, class_labels and input variables name, not really using input variable names to be honest
     
-    if ad_dataset:
+    if dataset=='ad':
+        from data.EOSdataset import DataSet
         if scenario == 'background':
             labels = {"background":0}
         if scenario == 'all':
@@ -21,7 +22,13 @@ def train(model ,normalise,scenario,embedding_model, ad_dataset):
         
         path = '/scratch/RobustQML_Datasets/AD_dataset/'
         
+    if dataset=='csv':
+        from data.CSVdataset import DataSet
+        path = '/scratch/RobustQML_Datasets/SUSY_processed/'
+        labels = {"background":0,"SUSY":1}
+        thirds = False
     else:
+        from data.EOSdataset import DataSet
         if scenario == 'minbias':
             labels = {"minbias":0}
         if scenario == 'QCD':
@@ -48,7 +55,8 @@ def train(model ,normalise,scenario,embedding_model, ad_dataset):
     
     input_shape = len(training_columns)
     input_length = len(full_data_frame)
-    model.build_model(input_shape)
+    print(input_shape,input_length)
+    model.build_model(input_shape,thirds)
     model.load_embedding_model(embedding_model)
     model.compile_model(input_length)
     model.fit(full_data_frame,training_columns)
@@ -82,7 +90,7 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        '-a', '--ad_dataset', action='store_true'
+        '-a', '--dataset', default='ad'
     )
 
     args = parser.parse_args()
@@ -90,4 +98,4 @@ if __name__ == "__main__":
     setup_gpu_memory_growth()
     
     model = fromYaml(args.yaml_config,args.output)
-    train(model, args.normalise,args.scenario, args.embedding_model, args.ad_dataset)
+    train(model, args.normalise,args.scenario, args.embedding_model, args.dataset)

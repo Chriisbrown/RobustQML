@@ -200,20 +200,25 @@ class FlatMaskingLayer(keras.layers.Layer):
         return inputs
     
 class PerObjectMaskingLayer(keras.layers.Layer):
-    def __init__(self, probability=0.5):
+    def __init__(self, probability=0.5, thirds=True):
         super().__init__()
         self.probability = probability
+        self.thirds = thirds
 
     def call(self, inputs):
         input_shape = inputs.shape
-        total_object = int(inputs.shape[0] / 3)
-        inputs = tf.reshape(inputs,(total_object,3))
-        mask = np.random.rand(inputs.shape[0],inputs.shape[1])
+        if self.thirds:
+            total_object = int(inputs.shape[0] / 3)
+            inputs = tf.reshape(inputs,(total_object,3))
+            mask = np.random.rand(inputs.shape[0],inputs.shape[1])
+        else:
+            mask = np.random.rand(inputs.shape[0])
         idx = mask < self.probability
         mask[idx] = 0
         mask[~idx] = 1
         inputs = inputs * mask
-        inputs = tf.reshape(inputs,input_shape)
+        if self.thirds:
+            inputs = tf.reshape(inputs,input_shape)
         return inputs
     
 class PhiRotationLayer(keras.layers.Layer):
@@ -239,10 +244,11 @@ class PhiRotationLayer(keras.layers.Layer):
         return inputs
   
 class Preprocessing(tf.keras.layers.Layer):
-    def __init__(self):
+    def __init__(self,thirds):
+        self.thirds = thirds
         super().__init__()
         self.augment = tf.keras.Sequential([
-            PerObjectMaskingLayer(0.5),
+            FlatMaskingLayer(0.2),
             #PhiRotationLayer(),
         ])
         
@@ -336,13 +342,13 @@ class ContrastiveEmbeddingModel(ADModel):
         ContrastiveEmbeddingModel (_type_): Base class of a AutoEncoderModel
     """
 
-    def build_model(self, inputs_shape: tuple):
+    def build_model(self, inputs_shape: tuple, thirds: int):
         """build model override, makes the model layer by layer
 
         Args:
             inputs_shape (tuple): Shape of the input
         """
-        
+        self.thirds = thirds
         self.contrastive_model = Contrastive(projection_dim=self.model_config['projection_dim'],
                                    input_shape=inputs_shape,
                                    batch_size=self.training_config['batch_size'],
@@ -418,7 +424,7 @@ class ContrastiveEmbeddingModel(ADModel):
         """
         # Train the model using hyperparameters in yaml config
         keras.config.disable_traceback_filtering()
-        augment = Preprocessing()
+        augment = Preprocessing(self.thirds)
         train = X_train
         ds = (
             tf.data.Dataset.from_tensor_slices((train[training_columns],train['event_label']))
@@ -510,9 +516,12 @@ class ContrastiveEmbeddingModel(ADModel):
         Returns:
             tuple: (class_predictions , pt_ratio_predictions)
         """
-        
+        print("full predict input ",test)
         x = tf.cast(test, tf.float32)
         x_latent = self.contrastive_model.backbone(x)
+        print("latent space ", x_latent)
+        print("min latent space ", np.min(x_latent))
+        print("max latent space ", np.max(x_latent))
         mean, logvar = self.vae_model.encode(x_latent)
         z = self.vae_model.reparameterize(mean, logvar)
         x_logit = self.vae_model.decode(z)

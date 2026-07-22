@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 # Import from other modules
 from model.common import fromYaml, ECfromYaml
-from data.EOSdataset import DataSet
+
 from model.common import fromFolder, ECfromFolder
 
 from model.gpu_utils import setup_gpu_memory_growth
@@ -69,10 +69,11 @@ run_augment_scan = args.augment_scan
 Model_type = args.model_type
 Dataset = args.dataset
 
-models = ['CEC','QEC']
+models = ['CEC','LEC','QEC']
 
 ######## GLOBAL PARAMETERS for ML Models ############
 if Dataset == 'C2V':
+    from data.EOSdataset import DataSet
     if Model_type == 'MLP':
         embedding_model_path = 'embeddings/C2V/all/MLP/'
         output_path = 'EventClassification/C2V/all/MLP'
@@ -81,12 +82,23 @@ if Dataset == 'C2V':
         output_path = 'EventClassification/C2V/all/Transformer'
 
 if Dataset == 'AD': 
+    from data.EOSdataset import DataSet
     if Model_type == 'MLP':
         embedding_model_path = 'embeddings/AD/all/MLP'
         output_path = 'EventClassification/AD/all/MLP'
     if Model_type == 'transformer':
         embedding_model_path = 'embeddings/AD/all/Transformer'
         output_path = 'EventClassification/AD/all/Transformer'
+        
+
+if Dataset == 'SUSY': 
+    from data.CSVdataset import DataSet
+    if Model_type == 'MLP':
+        embedding_model_path = 'embeddings/SUSY/all/MLP'
+        output_path = 'EventClassification/SUSY/all/MLP'
+    if Model_type == 'transformer':
+        embedding_model_path = 'embeddings/SUSY/all/Transformer'
+        output_path = 'EventClassification/SUSY/all/Transformer'
 
 ########## GLOBAL PARAMETERS for Collide 2V ##########
 
@@ -134,6 +146,29 @@ if Dataset == 'AD':
 
 ##################
 
+if Dataset == 'SUSY':
+
+    train_labels = {"background" : 0, "SUSY" :1}
+    test_labels =  {"background" : 0, "SUSY" :1}
+    augment_labels = {"background" : 0, "SUSY" :1, "background_augment":0, "SUSY_augment":1}
+
+    output_dict = {'CEC' : {"background" : {}, "SUSY" :{}},
+                   'LEC' : {"background" : {}, "SUSY" :{}},
+                   'QEC' : {"background" : {}, "SUSY" :{}}}
+    
+    augment_output_dict = {'CEC' : {"background" : {}, "SUSY" : {}, "background_augment" : {}, "SUSY_augment" : {} },
+                           'LEC' : {"background" : {}, "SUSY" : {}, "background_augment" : {}, "SUSY_augment" : {} },
+                           'QEC' : {"background" : {}, "SUSY" : {}, "background_augment" : {}, "SUSY_augment" : {} }}
+    input_path = '/scratch/RobustQML_Datasets/SUSY_processed/'
+
+    background_name = 'background'
+    background_augment_name = background_name + '_augment'
+
+    signal_name = 'SUSY'
+    signal_augment_name = signal_name + '_augment'
+
+##################
+
 
 os.makedirs(output_path, exist_ok=True)
 
@@ -167,6 +202,17 @@ train_data_frame = pd.read_pickle(output_path+'/embeddings/train/dataset.pkl')
 embedding_max, embedding_min = np.percentile(train_embeddings,100), np.percentile(train_embeddings,0)
 
 if retrain_AE_models:
+    
+    print("Training LEC")
+    
+    LEC_model = ECfromYaml('model/configs/EmbeddingLinearECModel.yaml',output_path+'/models/LEC')
+    input_shape = train_embeddings.shape[0]
+    input_length = len(train_embeddings)
+    LEC_model.build_model(input_shape, 1 ,embedding_min, embedding_max )
+    LEC_model.compile_model(input_length)
+    LEC_model.only_LEC_fit(train_embeddings,train_data_frame["event_label"].to_numpy())
+    LEC_model.save()
+    LEC_model.plot_loss()
    
     print("Training QEC")
     
@@ -190,8 +236,11 @@ if retrain_AE_models:
     CEC_model.save()
     CEC_model.plot_loss()
     
+
+    
     
 CEC_model = ECfromFolder(output_path+'/models/CEC')
+LEC_model = ECfromFolder(output_path+'/models/LEC')
 QEC_model = ECfromFolder(output_path+'/models/QEC')
 
 if rerun_embedding:
@@ -232,6 +281,8 @@ if rerun_predictions:
 
         print("Classical Classifier Predict")
         output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
+        print("Linear Classifier Predict")
+        output_dict['LEC'][label] = {'predictions' : LEC_model.only_LEC_predict(embeddings)}
         print("Quantum Classifier Predict")
         output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,data_frame["event_label"],1)}
   
@@ -390,6 +441,8 @@ if rerun_augment_predictions:
 
         print("Classical Classifier Predict")
         augment_output_dict['CEC'][label] = {'predictions' : CEC_model.only_CEC_predict(embeddings)}
+        print("Linear Classifier Predict")
+        augment_output_dict['LEC'][label] = {'predictions' : LEC_model.only_LEC_predict(embeddings)}
         print("Quantum Classifier Predict")
         augment_output_dict['QEC'][label] = {'predictions' : QEC_model.only_QEC_predict(embeddings,data_frame["event_label"],1)}
         
@@ -489,9 +542,11 @@ if run_augment_scan:
     f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err\n")
 
     non_augmented_model_results = {background_name: {'CEC':[],
+                                                     'LEC':[],
                                                      'QEC':[],
                                                      'embeddings':[]},
                                    signal_name: {'CEC':[],
+                                                 'LEC':[],
                                                  'QEC':[],
                                                  'embeddings':[]}}
 
@@ -507,6 +562,7 @@ if run_augment_scan:
                 embeddings = embedding_model.encoder_predict(data_test_dataframe[iCV*num_samples:(iCV+1)*num_samples],temp_dataset.training_columns) 
 
                 non_augmented_model_results[datasets]['CEC'].append(CEC_model.only_CEC_predict(embeddings))
+                non_augmented_model_results[datasets]['LEC'].append(LEC_model.only_LEC_predict(embeddings))
                 non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QEC_predict(embeddings,data_test_dataframe['event_label'][iCV*num_samples:(iCV+1)*num_samples],1))
                 non_augmented_model_results[datasets]['embeddings'].append(embeddings)
                 
@@ -517,9 +573,11 @@ if run_augment_scan:
     for smear_percent in [0.0001,0.001,0.01,0.1,1.0]:
         
         augmented_model_results = {background_name:{'CEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                    'LEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                     'QEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                     'embeddings':{'embeddings':0,'WD':[]}},
                                    signal_name:{'CEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
+                                                'LEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                 'QEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],'WD_signal':[],'WD_background':[]},
                                                 'embeddings':{'embeddings':0,'WD':[]}}}
         
@@ -545,6 +603,7 @@ if run_augment_scan:
                 print(augmented_embeddings.shape)
                 augmented_model_results[datasets]['CEC']['predictions'] = (CEC_model.only_CEC_predict(augmented_embeddings))
                 print(f"CEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
+                augmented_model_results[datasets]['LEC']['predictions'] = (LEC_model.only_LEC_predict(augmented_embeddings))
                 start_time = time.time()
                 augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings,data_test_dataframe['event_label'][iCV*num_samples:(iCV+1)*num_samples], 1))
                 print(f"QEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")

@@ -258,6 +258,8 @@ class VariationalAutoEncoderModel(ADModel):
         """
         
         x = tf.cast(test, tf.float32)
+        print("min x in vae predict",np.min(x))
+        print("max x in vae predict",np.max(x))
         mean, logvar = self.AD_model.encode(x)
         mu2 = np.linalg.vector_norm(mean,axis=1)
         z = self.AD_model.reparameterize(mean, logvar)

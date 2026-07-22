@@ -448,9 +448,9 @@ class DataSet:
 
         self.data_frame[phi_columns] = phi
         
-        self.data_frame['L1T_PUPPIMET_Phi'] = self.data_frame['L1T_PUPPIMET_Phi'] + event_phi_change
-        self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']>np.pi,  self.data_frame['L1T_PUPPIMET_Phi'] - 2*np.pi,self.data_frame['L1T_PUPPIMET_Phi'])        
-        self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']<-np.pi, self.data_frame['L1T_PUPPIMET_Phi']+2*np.pi,self.data_frame['L1T_PUPPIMET_Phi'])
+        #self.data_frame['L1T_PUPPIMET_Phi'] = self.data_frame['L1T_PUPPIMET_Phi'] + event_phi_change
+        #self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']>np.pi,  self.data_frame['L1T_PUPPIMET_Phi'] - 2*np.pi,self.data_frame['L1T_PUPPIMET_Phi'])        
+        #self.data_frame['L1T_PUPPIMET_Phi'] = np.where(self.data_frame['L1T_PUPPIMET_Phi']<-np.pi, self.data_frame['L1T_PUPPIMET_Phi']+2*np.pi,self.data_frame['L1T_PUPPIMET_Phi'])
         
         #print(self.data_frame.describe())
         
@@ -476,14 +476,14 @@ class DataSet:
         
 
         pt = np.where(pt<0, 0 , pt)
-        pt = np.where(pt>2000, 2000, pt)
+        #pt = np.where(pt>2000, 2000, pt)
     
         
         self.data_frame[pt_columns] = pt
         
-        self.data_frame['L1T_PUPPIMET_MET'] = self.data_frame['L1T_PUPPIMET_MET'] + event_pt_smear
-        self.data_frame['L1T_PUPPIMET_MET'] = np.where(self.data_frame['L1T_PUPPIMET_MET']>2000, 2000, self.data_frame['L1T_PUPPIMET_MET'])        
-        self.data_frame['L1T_PUPPIMET_MET'] = np.where(self.data_frame['L1T_PUPPIMET_MET']<0, 0, self.data_frame['L1T_PUPPIMET_MET'])
+        #self.data_frame['L1T_PUPPIMET_MET'] = self.data_frame['L1T_PUPPIMET_MET'] + event_pt_smear
+        #self.data_frame['L1T_PUPPIMET_MET'] = np.where(self.data_frame['L1T_PUPPIMET_MET']>2000, 2000, self.data_frame['L1T_PUPPIMET_MET'])        
+        #self.data_frame['L1T_PUPPIMET_MET'] = np.where(self.data_frame['L1T_PUPPIMET_MET']<0, 0, self.data_frame['L1T_PUPPIMET_MET'])
         
     def eta_smear(self,scale=0.01):
         # Get the phi features

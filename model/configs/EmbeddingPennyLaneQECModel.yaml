@@ -7,10 +7,10 @@ run_config :
 model_config :
   name : q
   latent_dim : 1
-  embedding_dim : 8
-  n_layers : 1
+  embedding_dim : 7
+  n_layers : 4
 
 training_config :
   epochs : 120
   batch_size : 1000
-  learning_rate : 0.2
+  learning_rate : 0.15

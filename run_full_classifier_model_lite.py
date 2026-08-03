@@ -70,7 +70,7 @@ training_columns = ['lepton_1_pT','lepton_1_eta',
                         'ET_miss',
                         'M_TR_2','M_Delta_R']
 embedding_model_path = 'embeddings/SUSY/all/MLP'
-output_path = 'EventClassification/SUSY/all/3_layers/MLP'
+output_path = 'EventClassification/SUSY/all/4_layers/MLP'
 
 train_labels = {"background" : 0, "SUSY" :1}
 test_labels =  {"background" : 0, "SUSY" :1}
@@ -220,6 +220,7 @@ if plot:
                 bins = 50)
         os.makedirs(f"{output_path}/models/{model}/plots/testing/", exist_ok=True)
         plt.savefig(f"{output_path}/models/{model}/plots/testing/outputscores.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/models/{model}/plots/testing/outputscores.pdf", bbox_inches='tight')
         plt.close() 
 
     
@@ -231,6 +232,7 @@ if plot:
                 [output_dict[model][dataset]['predictions'] for dataset in output_dict[model].keys()],
                 test_labels)
         plt.savefig(f"{output_path}/models/{model}/plots/testing/ROC.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/models/{model}/plots/testing/ROC.pdf", bbox_inches='tight')
         plt.close() 
 
     
@@ -241,6 +243,7 @@ if plot:
                   models)
         os.makedirs(f"{output_path}/plots/testing/", exist_ok=True)
         plt.savefig(f"{output_path}/plots/testing/{label}_ROC.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/plots/testing/{label}_ROC.pdf", bbox_inches='tight')
         plt.close() 
         
         
@@ -376,6 +379,7 @@ if plot:
                 bins = 50)
         os.makedirs(f"{output_path}/models/{model}/plots/augment/testing/", exist_ok=True)
         plt.savefig(f"{output_path}/models/{model}/plots/augment/testing/outputscores.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/models/{model}/plots/augment/testing/outputscores.pdf", bbox_inches='tight')
         plt.close() 
 
     
@@ -390,6 +394,7 @@ if plot:
                 x_range=(0, 1), 
                 bins = 50)
         plt.savefig(f"{output_path}/plots/augment/testing/{label}_outputscores.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/plots/augment/testing/{label}_outputscores.pdf", bbox_inches='tight')
         plt.close()  
     
     print("Plotting augment ROCs")
@@ -400,6 +405,7 @@ if plot:
             [augment_output_dict[model][dataset]['predictions'] for dataset in augment_output_dict[model].keys()],
             augment_labels)
         plt.savefig(f"{output_path}/models/{model}/plots/augment/testing/ROC.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/models/{model}/plots/augment/testing/ROC.pdf", bbox_inches='tight')
         plt.close() 
 
     
@@ -416,6 +422,7 @@ if plot:
                       models)
         
         plt.savefig(f"{output_path}/plots/augment/testing/{label}_ROC.png", bbox_inches='tight')
+        plt.savefig(f"{output_path}/plots/augment/testing/{label}_ROC.pdf", bbox_inches='tight')
         plt.close() 
         
         
@@ -429,7 +436,7 @@ for model in models:
     background_wd = scipy.stats.wasserstein_distance(background,background_a)
     sig_wd = scipy.stats.wasserstein_distance(sig,sig_a)
     
-    auc_loss_list = ROC_curve([background, background_a],
+    auc_loss_list, tpr_loss_list = ROC_curve([background, background_a],
                               [sig,     sig_a],
                               [background_name,signal_name],plot=False)
     
@@ -438,17 +445,20 @@ for model in models:
     print(f"Wasserstein Distance for Signal sample {sig_wd}")
     print(f"Non Augmented ROC {auc_loss_list[0]}")
     print(f"Augmented ROC {auc_loss_list[1]}")
+    print(f"Non Augmented TPR {tpr_loss_list[0]}")
+    print(f"Augmented TPR {tpr_loss_list[1]}")
     
     
 if run_augment_scan:
+        
+    num_samples = {background_name:48000,signal_name:6000}
     
-    num_samples = 6000
     num_CV = 10
     print("Running augment scan")
     
     os.makedirs(output_path+"/augment/", exist_ok=True)
     f = open(output_path+"/augment/scan_classical_only.csv",'w')
-    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err,background_mse,background_mse_err,signal_mse,signal_mse_err,background_mae,background_mae_err,signal_mae,signal_mae_err,background_cos,background_cos_err,signal_cos,signal_cos_err,background_euc,background_euc_err,signal_euc,signal_euc_err\n")
+    f.write(f"model,smear_percent,auc_loss_non_augmented,auc_loss_non_augmented_err,auc_loss_augmented ,auc_loss_augmented_err,tpr_non_augmented,tpr_non_augmented_err,tpr_augmented ,tpr_augmented_err,background_wd,background_wd_err,signal_wd,signal_wd_err,background_mse,background_mse_err,signal_mse,signal_mse_err,background_mae,background_mae_err,signal_mae,signal_mae_err,background_cos,background_cos_err,signal_cos,signal_cos_err,background_euc,background_euc_err,signal_euc,signal_euc_err\n")
 
     non_augmented_model_results = {background_name: {'CEC':[],
                                                      'LEC':[],
@@ -463,37 +473,45 @@ if run_augment_scan:
         start_time = time.time()
         for datasets in [background_name,signal_name]:
                 temp_dataset =  DataSet.fromH5(input_path+datasets+'/test/')
+                
                 temp_dataset.normalise()
                 data_test_dataframe = temp_dataset.data_frame
-                
+                print(len(data_test_dataframe))
                 temp_dataset.set_label(test_labels[datasets])
 
-                embeddings = data_test_dataframe[training_columns].to_numpy()[iCV*num_samples:(iCV+1)*num_samples]
+                embeddings = data_test_dataframe[training_columns].to_numpy()[iCV*num_samples[datasets]:(iCV+1)*num_samples[datasets]]
+                
+                use_max_events = True
+                if datasets == 'background':
+                    use_max_events = False
 
                 non_augmented_model_results[datasets]['CEC'].append(CEC_model.only_CEC_predict(embeddings))
                 non_augmented_model_results[datasets]['LEC'].append(LEC_model.only_CEC_predict(embeddings))
-                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QEC_predict(embeddings,data_test_dataframe['event_label'][iCV*num_samples:(iCV+1)*num_samples],1))
+                non_augmented_model_results[datasets]['QEC'].append(QEC_model.only_QEC_predict(embeddings,data_test_dataframe['event_label'][iCV*num_samples[datasets]:(iCV+1)*num_samples[datasets]],1,use_max_events))
                 non_augmented_model_results[datasets]['embeddings'].append(embeddings)
                 
                 gc.collect()
                 
         print(f"Cross validation {iCV} background finishing in {time.time() - start_time} s")
 
-    for smear_percent in [0.001,0.01,0.1,0.2,0.4,0.6,0.8,1.0]:
-        
+    for smear_percent in [0.001,0.0025,0.005,0.01,0.025,0.05,0.1,0.2,0.4,0.6,0.8,1.0]:
+    #for smear_percent in [0.4,0.6,0.8,1.0]:    
         augmented_model_results = {background_name:{'CEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                           'augmented_tpr':[],'non_augmented_tpr':[],
                                                            'WD_signal':[],'WD_background':[],
                                                            'MSE_signal':[],'MSE_background':[],
                                                            'MAE_signal':[],'MAE_background':[],
                                                            'cos_signal':[],'cos_background':[],
                                                            'euc_signal':[],'euc_background':[]},
                                                     'LEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                           'augmented_tpr':[],'non_augmented_tpr':[],
                                                            'WD_signal':[],'WD_background':[],
                                                            'MSE_signal':[],'MSE_background':[],
                                                            'MAE_signal':[],'MAE_background':[],
                                                            'cos_signal':[],'cos_background':[],
                                                            'euc_signal':[],'euc_background':[]},
                                                     'QEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                           'augmented_tpr':[],'non_augmented_tpr':[],
                                                            'WD_signal':[],'WD_background':[],
                                                            'MSE_signal':[],'MSE_background':[],
                                                            'MAE_signal':[],'MAE_background':[],
@@ -501,18 +519,21 @@ if run_augment_scan:
                                                            'euc_signal':[],'euc_background':[]},
                                                     },
                                    signal_name:{'CEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                       'augmented_tpr':[],'non_augmented_tpr':[],
                                                        'WD_signal':[],'WD_background':[],
                                                         'MSE_signal':[],'MSE_background':[],
                                                         'MAE_signal':[],'MAE_background':[],
                                                         'cos_signal':[],'cos_background':[],
                                                         'euc_signal':[],'euc_background':[]},
                                                 'LEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                       'augmented_tpr':[],'non_augmented_tpr':[],
                                                        'WD_signal':[],'WD_background':[],
                                                         'MSE_signal':[],'MSE_background':[],
                                                         'MAE_signal':[],'MAE_background':[],
                                                         'cos_signal':[],'cos_background':[],
                                                         'euc_signal':[],'euc_background':[]},
                                                 'QEC':{'predictions':0,'augmented_ROC':[],'non_augmented_ROC':[],
+                                                       'augmented_tpr':[],'non_augmented_tpr':[],
                                                        'WD_signal':[],'WD_background':[],
                                                         'MSE_signal':[],'MSE_background':[],
                                                         'MAE_signal':[],'MAE_background':[],
@@ -536,7 +557,7 @@ if run_augment_scan:
                 
                 print(f"Data set loading {iCV} {datasets} {smear_percent} finishing in {time.time() - start_time} s")
                 start_time = time.time()
-                augmented_embeddings = data_test_dataframe[training_columns].to_numpy()[iCV*num_samples:(iCV+1)*num_samples]
+                augmented_embeddings = data_test_dataframe[training_columns].to_numpy()[iCV*num_samples[datasets]:(iCV+1)*num_samples[datasets]]
                 print(f"Embedding predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 start_time = time.time()
                 print(augmented_embeddings.shape)
@@ -544,7 +565,12 @@ if run_augment_scan:
                 print(f"CEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 augmented_model_results[datasets]['LEC']['predictions'] = (LEC_model.only_CEC_predict(augmented_embeddings))
                 start_time = time.time()
-                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings,data_test_dataframe['event_label'][iCV*num_samples:(iCV+1)*num_samples], 1))
+                
+                use_max_events = True
+                if datasets == 'background':
+                    use_max_events = False
+                    
+                augmented_model_results[datasets]['QEC']['predictions'] = (QEC_model.only_QEC_predict(augmented_embeddings,data_test_dataframe['event_label'][iCV*num_samples[datasets]:(iCV+1)*num_samples[datasets]], 1,use_max_events))
                 print(f"QEC predict {iCV} {datasets} finishing in {time.time() - start_time} s")
                 gc.collect()
             
@@ -570,12 +596,14 @@ if run_augment_scan:
                 
                 
                 
-                auc_loss_list = ROC_curve([non_augmented_model_results[background_name][model][iCV], augmented_model_results[background_name][model]['predictions']],
+                auc_loss_list, tpr_loss_list = ROC_curve([non_augmented_model_results[background_name][model][iCV], augmented_model_results[background_name][model]['predictions']],
                                         [non_augmented_model_results[signal_name][model][iCV],     augmented_model_results[signal_name][model]['predictions']],
                                         [background_name,signal_name],plot=False)
                 
                 augmented_model_results[background_name][model]['augmented_ROC'].append( auc_loss_list[1])
                 augmented_model_results[background_name][model]['non_augmented_ROC'].append( auc_loss_list[0])
+                augmented_model_results[background_name][model]['augmented_tpr'].append( auc_loss_list[1])
+                augmented_model_results[background_name][model]['non_augmented_tpr'].append( auc_loss_list[0])
                 augmented_model_results[background_name][model]['WD_signal'].append( sig_wd)
                 augmented_model_results[background_name][model]['WD_background'].append( background_wd )
                 augmented_model_results[background_name][model]['MSE_signal'].append( sig_mse)
@@ -595,6 +623,11 @@ if run_augment_scan:
             non_augment_roc_err = np.std(augmented_model_results[background_name][model]['non_augmented_ROC'])
             augment_roc = sum(augmented_model_results[background_name][model]['augmented_ROC'])/num_CV
             augment_roc_err = np.std(augmented_model_results[background_name][model]['augmented_ROC'])
+            
+            non_augment_tpr = sum(augmented_model_results[background_name][model]['non_augmented_tpr']) /num_CV
+            non_augment_tpr_err = np.std(augmented_model_results[background_name][model]['non_augmented_tpr'])
+            augment_tpr = sum(augmented_model_results[background_name][model]['augmented_tpr'])/num_CV
+            augment_tpr_err = np.std(augmented_model_results[background_name][model]['augmented_tpr'])
              
             background_WD = sum(augmented_model_results[background_name][model]['WD_background'])/num_CV
             background_WD_err = np.std(augmented_model_results[background_name][model]['WD_background'])
@@ -626,6 +659,11 @@ if run_augment_scan:
             print(smear_percent)
             print(f"Non Augmented ROC {non_augment_roc} +/- {non_augment_roc_err}")
             print(f"Augmented ROC {augment_roc} +/- {augment_roc_err}")
+            
+            print("TPR at FPR of 1e-5")
+            print(f"Non Augmented TPR {non_augment_tpr} +/- {non_augment_tpr_err}")
+            print(f"Augmented TPR {augment_tpr} +/- {augment_tpr_err}")
+            
             print("Wasserstein Distance")
             print(f"Background sample {background_WD} +/- {background_WD_err}")
             print(f"Signal sample {signal_WD} +/- {signal_WD_err}")
@@ -656,6 +694,10 @@ if run_augment_scan:
                     f"{non_augment_roc_err},"
                     f"{augment_roc} , "
                     f"{augment_roc_err},"
+                    f"{non_augment_tpr},"
+                    f"{non_augment_tpr_err},"
+                    f"{augment_tpr} , "
+                    f"{augment_tpr_err},"
                     f"{background_WD}, " 
                     f"{background_WD_err} , "
                     f"{signal_WD} , "

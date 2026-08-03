@@ -72,7 +72,7 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         Args:
             inputs_shape (tuple): Shape of the input
         """
-        total_object = int(self.model_config['embedding_dim']) 
+        total_object = int(self.model_config['embedding_dim'] / 2)
         
         self.xmin = xmin
         self.xmax = xmax
@@ -98,33 +98,34 @@ class EmbeddingPennyLaneQAEModel(ADModel):
             nq = len(self.q_wires)
             nt = len(self.t_wires)
 
-                # Encoding layer
+            # Encoding layer
             for i in range(nq):
-                qml.RY(x1[i], wires=self.q_wires[i])
+                qml.RY(x1[2*i], wires=self.q_wires[i])
+                qml.RX(x1[2*i+1], wires=self.q_wires[i])
 
-                # CNOT pattern: for i<j, CX(q[i], q[j])
+            # CNOT pattern: for i<j, CX(q[i], q[j])
             for i in range(nq):
                 for j in range(i + 1, nq):
                     qml.CNOT(wires=[self.q_wires[i], self.q_wires[j]])
 
-                # Rotation layer
+            # Rotation layer
             for i in range(nq):
                 qml.RZ(weights[i],           wires=self.q_wires[i])
                 qml.RY(weights[i + nq],      wires=self.q_wires[i])
                 qml.RZ(weights[i + 2 * nq],  wires=self.q_wires[i])
                 qml.RX(weights[i + 3 * nq],  wires=self.q_wires[i])
 
-                # Ancilla H
+            # Ancilla H
             qml.Hadamard(wires=self.a_wire)
 
-                # Controlled-SWAPs
+            # Controlled-SWAPs
             for i in reversed(range(nt)):
                 qml.CSWAP(wires=[self.a_wire, self.q_wires[-(i + 1)], self.t_wires[-(i + 1)]])
 
-                # Final H
+            # Final H
             qml.Hadamard(wires=self.a_wire)
 
-                # "Measure ancilla"
+            # "Measure ancilla"
             if return_projector:
                 # returns samples of projector onto |1>, i.e. 1 if ancilla is |1>, else 0
                 #return qml.sample(qml.Projector([1], wires=self.a_wire))
@@ -366,12 +367,12 @@ class EmbeddingPennyLaneQAEModel(ADModel):
         if use_max_events:
             max_num_events = len(x)
         else:
-            max_num_events = int(len(x)/100)
+            max_num_events = int(len(x)/50)
             
         for ievent in range(max_num_events):
             predictions.append(qml.math.mean(self.autoencoder(self.circuit_weights,  x[ievent] )))
         ad_scores = np.array(predictions ) 
-        ad_scores = ad_scores/0.5
+        ad_scores = (ad_scores - min(ad_scores)) / (max(ad_scores) - min(ad_scores))
         return ad_scores
     
     
@@ -434,7 +435,7 @@ class EmbeddingHWPennyLaneQAEModel(EmbeddingPennyLaneQAEModel):
         Args:
             inputs_shape (tuple): Shape of the input
         """
-        total_object = int(self.model_config['embedding_dim']) 
+        total_object = int(self.model_config['embedding_dim'] / 2) 
         self.xmin = xmin
         self.xmax = xmax
         nq = total_object
@@ -458,23 +459,23 @@ class EmbeddingHWPennyLaneQAEModel(EmbeddingPennyLaneQAEModel):
 
             # Encoding layer
             for i in range(nq):
-                qml.RY(x1[i], wires=self.q_wires[i])
+                qml.RY(x1[2*i], wires=self.q_wires[i])
+                qml.RX(x1[2*i+1], wires=self.q_wires[i])
 
-            for i in range(layers):
-                # Rotation layer
-                for i in range(nq):
-                    qml.RZ(weights[i],           wires=self.q_wires[i])
-                    qml.RY(weights[i + nq],      wires=self.q_wires[i])
-                    qml.RZ(weights[i + 2 * nq],  wires=self.q_wires[i])
-                    qml.RX(weights[i + 3 * nq],  wires=self.q_wires[i])
-                    
+            for l in range(layers):
                 for i in range(0, nq, 2):
                     qml.CNOT(wires=[self.q_wires[i], self.q_wires[i + 1]])
                     
                 for i in range(1, nq-1, 2):
                     qml.CNOT(wires=[self.q_wires[i], self.q_wires[i + 1]])
                 
-            qml.CSWAP(wires=[self.a_wire, self.q_wires[-(i + 1)], self.t_wires[-(i + 1)]])
+                # Rotation layer   
+                for i in range(nq):
+                    qml.RZ(weights[i],           wires=self.q_wires[i])
+                    qml.RY(weights[i + nq],      wires=self.q_wires[i])
+                    qml.RZ(weights[i + 2 * nq],  wires=self.q_wires[i])
+                    qml.RX(weights[i + 3 * nq],  wires=self.q_wires[i])
+                    
 
             # Ancilla H
             qml.Hadamard(wires=self.a_wire)

@@ -153,6 +153,7 @@ def ROC_curve(background,signal,labels,plot=True):
     
     else:
         auc_loss_list = []
+        tpr_loss_list = []
     
     for i,label in enumerate(labels):
             target_background = np.zeros(background[i].shape[0])
@@ -161,7 +162,10 @@ def ROC_curve(background,signal,labels,plot=True):
 
             fpr_loss, tpr_loss, threshold_loss = roc_curve(trueVal, predVal_loss)
 
+            idx = np.argmin(np.abs(fpr_loss - 1e-5))
             auc_loss = auc(fpr_loss, tpr_loss)
+            
+            tpr_at_minus5 = tpr_loss[idx]
             
             if plot:
                     
@@ -169,6 +173,7 @@ def ROC_curve(background,signal,labels,plot=True):
                 
             else:
                 auc_loss_list.append(auc_loss)
+                tpr_loss_list.append(tpr_at_minus5)
     if plot:       
         ax.semilogx()
         ax.semilogy()
@@ -183,7 +188,7 @@ def ROC_curve(background,signal,labels,plot=True):
         return fig
     
     else:
-        return auc_loss_list
+        return auc_loss_list,tpr_loss_list
     
     
     

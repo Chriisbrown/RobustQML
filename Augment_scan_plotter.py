@@ -30,11 +30,12 @@ print(df.head())
 
 
 colours = ['cornflowerblue','mediumvioletred','darkorange','orange']
-colours = ['#FF2C55','#731963','#348AA7']
-models = ['CAE','QAE','HW_QAE']
+colours = ['#FF2C55','#731963','#348AA7','#FE6100']
+models = ['CAE','VAE','QAE','HW_QAE']
 #models = ['CEC','QEC','LEC']#
 
 model_names = {'CAE' : 'Classical Autoencoder',
+               'VAE' : 'Variational Autoencoder',
                'QAE' : 'Quantum Autoencoder',
                'HW_QAE': 'Hardware Optimised Quantum Autoencoder'}
 
@@ -70,18 +71,19 @@ if smear:
                             color=colour, alpha=0.2, linewidth=0)
         
         
-        ax.plot(model_df['smear_percent'],model_df['auc_loss_non_augmented'],label=model+' non augmented',linestyle='-',alpha=0.5,color=colour,linewidth=line_width)
-        ax.plot(model_df['smear_percent'],model_df['auc_loss_non_augmented']+model_df['auc_loss_non_augmented_err'],linestyle='--',alpha=0.1,color=colour,linewidth=line_width)
-        ax.plot(model_df['smear_percent'],model_df['auc_loss_non_augmented']-model_df['auc_loss_non_augmented_err'],linestyle='--',alpha=0.1,color=colour,linewidth=line_width)
+        #ax.plot(model_df['smear_percent'],model_df['auc_loss_non_augmented'],label=model+' non augmented',linestyle='-',alpha=0.5,color=colour,linewidth=line_width)
+        #ax.plot(model_df['smear_percent'],model_df['auc_loss_non_augmented']+model_df['auc_loss_non_augmented_err'],linestyle='--',alpha=0.1,color=colour,linewidth=line_width)
+        #ax.plot(model_df['smear_percent'],model_df['auc_loss_non_augmented']-model_df['auc_loss_non_augmented_err'],linestyle='--',alpha=0.1,color=colour,linewidth=line_width)
 
-    #ax.set_xscale('log')
-    ax.set_ylabel("ROC AUC")
-    ax.set_xlabel("Smear Percentage")
-    ax.legend(loc='upper left')
+    ax.set_xscale('log')
+    ax.set_ylabel("ROC AUC",loc='top')
+    ax.set_xlabel("Smear Percentage",loc='right')
+    ax.legend(loc='lower left')
     ax.grid(True)
     ax.set_ylim(0.4,0.9)
     save_path = os.path.join(input_dir, "ROC_vs_smear")
     plt.savefig(f"{save_path}.png", bbox_inches='tight')
+    plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
     plt.close()
     
     for distance in ['wd','mse','mae','cos','euc']:
@@ -112,14 +114,15 @@ if smear:
             #ax.plot(model_df['smear_percent'],model_df['background_'+distance],label=model+' non augmented',linestyle='-',alpha=0.5,color=colour,linewidth=line_width)
 
         #ax.set_yscale('log')  
-        #ax.set_xscale('log')
-        ax.set_ylabel("Background "+metric_names[distance])
-        ax.set_xlabel("Smear Percentage")
+        ax.set_xscale('log')
+        ax.set_ylabel("Background "+metric_names[distance],loc='top')
+        ax.set_xlabel("Smear Percentage",loc='right')
         ax.legend(loc='upper left')
         ax.grid(True)
-        ax.set_ylim(-0.01,max_y*1.1)
+        ax.set_ylim(-0.0001,max_y*1.5)
         save_path = os.path.join(input_dir, "background_"+distance+"_vs_smear")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
+        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
         plt.close()
 
 
@@ -143,12 +146,13 @@ if smear:
                             color=colour, alpha=0.2, linewidth=0)
           
         #ax.set_yscale('log')  
-        #ax.set_xscale('log')
-        ax.set_ylabel("Signal "+metric_names[distance])
-        ax.set_xlabel("Smear Percentage")
+        ax.set_xscale('log')
+        ax.set_ylabel("Signal "+metric_names[distance],loc='top')
+        ax.set_xlabel("Smear Percentage",loc='right')
         ax.legend(loc='upper left')
         ax.grid(True)
-        ax.set_ylim(-0.01,max_y*1.1)
+        ax.set_ylim(-0.0001,max_y*1.5)
         save_path = os.path.join(input_dir, "signal_"+distance+"_vs_smear")
         plt.savefig(f"{save_path}.png", bbox_inches='tight')
+        plt.savefig(f"{save_path}.pdf", bbox_inches='tight')
         plt.close()

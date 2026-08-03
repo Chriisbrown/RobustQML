@@ -178,7 +178,7 @@ class EmbeddingVAEModel(ADModel):
         x_logit = self.AD_model.decode(z)
         ad_scores = tf.keras.losses.mse(x_logit, x)
         ad_scores = ad_scores._numpy()
-        #ad_scores = mu2
+        ad_scores = mu2
 
         ad_scores = (ad_scores - np.min(ad_scores)) / (np.max(ad_scores) - np.min(ad_scores))
         if return_score:
@@ -339,11 +339,6 @@ class EmbeddingCAEModel(ADModel):
             X_train (npt.NDArray[np.float64]): X train dataset
         """
         
-        print("DEBUG CAE")
-        print(self.xmin)
-        print(self.xmax)
-        print(np.max(X_train))
-        print(np.min(X_train))
         X_train = np.clip(X_train, self.xmin, self.xmax)
         x_train = np.array((((X_train - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi)
                   
@@ -405,13 +400,8 @@ class EmbeddingCAEModel(ADModel):
         Returns:
             float: model prediction
         """
-        print("DEBUG CAE")
-
-        print(np.max(X_test))
-        print(np.min(X_test))
         X_test = np.clip(X_test, self.xmin, self.xmax)
-        print(self.xmin)
-        print(self.xmax)
+
         
         x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
 

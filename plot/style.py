@@ -3,7 +3,7 @@ import mplhep as hep
 
 colours = ["black", "red", "orange", "green", "blue","magenta","cyan","yellow","purple","gold"]
 
-colours = ['#FF2C55','#731963','#348AA7','#8cb369','#c69c72']
+colours = ['#FF2C55','#731963','#348AA7','#FE6100','#8cb369','#c69c72']
 
 LINESTYLES = [
     "-",

@@ -291,7 +291,7 @@ class EmbeddingQECModel(ECModel):
         scores = np.array(predictions ) 
         return scores        
         
-    def only_QEC_predict(self, X_test,y_test,n_out) -> npt.NDArray[np.float64]:
+    def only_QEC_predict(self, X_test,y_test,n_out,use_max_events=True) -> npt.NDArray[np.float64]:
 
         """Predict method for model
 
@@ -308,6 +308,15 @@ class EmbeddingQECModel(ECModel):
         x = (((X_test - self.xmin) / (self.xmax - self.xmin)) * 2*np.pi) - np.pi
         
         y = y_test.to_numpy()
+        
+        if use_max_events:
+            max_num_events = len(x)
+        else:
+            max_num_events = int(len(x)/10)
+            
+        x = x[0:max_num_events]
+        y = y[0:max_num_events]
+        
         predictions = pnp.stack([self.circuit(self.circuit_weights, x[i]) for i in range(len(y))])
         # Linear layer: [batch_size, 16] @ [16] + scalar -> [batch_size]
         logits = predictions @ self.linear_weights + self.linear_bias
